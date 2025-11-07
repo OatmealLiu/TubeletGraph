@@ -1,5 +1,5 @@
 # Tracking and Understanding Object Transformations
-### [Project Page](https://tubelet-graph.github.io/) | [Paper (Coming Soon)](https://github.com/YihongSun/TubeletGraph) | [Video (Coming Soon)](https://github.com/YihongSun/TubeletGraph)
+### [Project Page](https://tubelet-graph.github.io/) | [Paper](https://arxiv.org/abs/2511.04678) | [Video](https://youtu.be/FOs0BEd5-NY)
 
 Official PyTorch implementation for the NeurIPS 2025 paper: "Tracking and Understanding Object Transformations".
 
@@ -119,7 +119,6 @@ If you find our work useful in your research, please consider citing our paper:
   title={Tracking and Understanding Object Transformations},
   author={Sun, Yihong and Yang, Xinyu and Sun, Jennifer J and Hariharan, Bharath},
   journal={Advances in Neural Information Processing Systems},
-  volume={38},
   year={2025}
 }
 ```
