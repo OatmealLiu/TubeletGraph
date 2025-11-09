@@ -4,3 +4,6 @@
 [submodule "thirdparty/sam2"]
 	path = thirdparty/sam2
 	url = https://github.com/YihongSun/sam2.git
+[submodule "thirdparty/Entity"]
+	path = thirdparty/Entity
+	url = https://github.com/YihongSun/Entity.git

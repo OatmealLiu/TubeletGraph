@@ -18,18 +18,29 @@ The code is tested with `python=3.10`, `torch==2.7.0+cu126` and `torchvision==0.
 ```
 git clone --recurse-submodules https://github.com/YihongSun/TubeletGraph/
 cd TubeletGraph/
-conda create -n tubeletgraph python=3.10
+conda create -n tubeletgraph python=3.10 -y
 conda activate tubeletgraph
-TODO: add more packages
-pip install torch==1.12.1 torchvision==0.13.1
-pip install matplotlib opencv-python tqdm scikit-image pycocotools omegaconf
-pip install imageio
-pip install imageio[ffmpeg]
+pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu126
+pip install -r requirements.txt
+
+cd thirdparty/sam2
+pip install -e .
+pip install -e ".[notebooks]"
+cd ../..
+
+cd thirdparty
+git clone https://github.com/facebookresearch/detectron2.git
+python -m pip install -e detectron2 --no-build-isolation
+ln -s "$(pwd)"/Entity/Entityv2/CropFormer detectron2/projects/CropFormer
+cd detectron2/projects/CropFormer/mask2former/modeling/pixel_decoder/ops
+bash make.sh
+cd ../../../../../../../..
+# conda install -c conda-forge libstdcxx-ng # resolves libstdc++ version mismatch if needed 
+
+bash thirdparty/setup_ckpts.sh
 ```
-In addition, please install the following:
-- Install [SAM2 with multi-mask predictions](https://github.com/YihongSun/sam2/tree/fb5e452074cd8bf2da3e2d9b4108e480b7f07276) in [thirdparty](thirdparty) according to corresponding documentations. 
-- Install [CropFormer](https://github.com/qqlu/Entity/blob/6e7e13ac91ef508088e1b848167c01f19b00b512/Entityv2/README.md) with a separate conda environments according to their documentations.
-- Install [FC-CLIP](https://github.com/bytedance/fc-clip/tree/2b0bbe213070d44da9182530fa2e826fef03f974) with a separate conda environments according to their documentations.
+- Please see [INSTALL.md](https://github.com/facebookresearch/sam2/blob/main/INSTALL.md) from the original SAM 2 repository for FAQs on potential issues and solutions.
+- Please install [FC-CLIP](https://github.com/bytedance/fc-clip/tree/2b0bbe213070d44da9182530fa2e826fef03f974) with a separate conda environments according to their documentations.
 
 And update the corresponding paths in [configs/default.yaml](configs/default.yaml) for CropFormer and FC-CLIP, accordingly.
 

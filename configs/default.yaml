@@ -20,9 +20,9 @@ datasets:
 
 entity_seg:
   cropformer:
-    project_path: <ADD/YOUR/PATH>/detectron2/projects/CropFormer
-    config_path: <ADD/YOUR/PATH>/detectron2/projects/CropFormer/configs/entityv2/entity_segmentation/cropformer_hornet_3x.yaml
-    opts: ['MODEL.WEIGHTS', '<ADD/YOUR/PATH>/detectron2/ckpts/CropFormer_hornet_3x_03823a.pth']
+    project_path: ./thirdparty/detectron2/projects/CropFormer
+    config_path: ./thirdparty/detectron2/projects/CropFormer/configs/entityv2/entity_segmentation/cropformer_hornet_3x.yaml
+    opts: ['MODEL.WEIGHTS', './_ckpts/CropFormer_hornet_3x_03823a.pth']
     confidence_threshold: 0.5
   sam_automask:
     model_weights: ./_ckpts/sam2.1_hiera_large.pt
