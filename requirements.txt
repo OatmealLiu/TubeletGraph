@@ -13,3 +13,4 @@ tqdm==4.67.1
 mmcv==2.2.0
 timm==1.0.15
 MultiScaleDeformableAttention==1.0
+gdown

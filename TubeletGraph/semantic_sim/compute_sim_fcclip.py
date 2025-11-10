@@ -68,7 +68,7 @@ def demo_run_on_image(demo, image, masks):
         image.to(predictor.cfg.MODEL.DEVICE)
 
         inputs = {"image": image, "height": height, "width": width, "masks": masks}
-        predictions = predictor.model([inputs])[0]
+        predictions = predictor.model.forward_feature([inputs])[0]
         predictions['pooled_clip_feature'] = predictions['pooled_clip_feature'].cpu()
 
         return predictions

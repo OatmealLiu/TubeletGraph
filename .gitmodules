@@ -7,3 +7,6 @@
 [submodule "thirdparty/Entity"]
 	path = thirdparty/Entity
 	url = https://github.com/YihongSun/Entity.git
+[submodule "thirdparty/fc-clip"]
+	path = thirdparty/fc-clip
+	url = https://github.com/YihongSun/fc-clip.git

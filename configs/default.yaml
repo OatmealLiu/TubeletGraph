@@ -57,9 +57,9 @@ tubelet:
 
 sem_sim:
   name: fcclip
-  project_path: <ADD/YOUR/PATH>/fc-clip
-  config_path: <ADD/YOUR/PATH>/fc-clip/configs/coco/panoptic-segmentation/fcclip/fcclip_convnext_large_eval_ade20k.yaml
-  opts: ['MODEL.WEIGHTS', '<ADD/YOUR/PATH>/fc-clip/checkpoints/fcclip_cocopan.pth']
+  project_path: ./thirdparty/fc-clip
+  config_path: ./thirdparty/fc-clip/configs/coco/panoptic-segmentation/fcclip/fcclip_convnext_large_eval_ade20k.yaml
+  opts: ['MODEL.WEIGHTS', './_ckpts/fcclip_cocopan.pth']
 
 methods:
   Ours:
