@@ -11,6 +11,7 @@ class SAM2:
         
         self.predictor = build_sam2_video_predictor(model_cfg, model_weights, device=device)
         self.multi_mask = multi_mask
+        self.inference_state = None
 
     def initialize(self, **info):
         self.inference_state = self.predictor.init_state(video_path=info['video_dir'])
@@ -80,6 +81,7 @@ class SAM2:
         return output
 
     def clear_all_cache(self):
-        for k in self.inference_state.keys():
-            self.inference_state[k] = None
+        if self.inference_state is not None:
+            for k in self.inference_state.keys():
+                self.inference_state[k] = None
         torch.cuda.empty_cache()

@@ -22,12 +22,16 @@ conda create -n tubeletgraph python=3.10 -y
 conda activate tubeletgraph
 pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorch.org/whl/cu126
 pip install -r requirements.txt
+bash thirdparty/setup_ckpts.sh
 
+# install SAM2 with multi-mask predictions
 cd thirdparty/sam2
 pip install -e .
 pip install -e ".[notebooks]"
+python setup.py build_ext --inplace
 cd ../..
 
+# install CropFormer
 cd thirdparty
 git clone https://github.com/facebookresearch/detectron2.git
 python -m pip install -e detectron2 --no-build-isolation
@@ -37,12 +41,11 @@ bash make.sh
 cd ../../../../../../../..
 # conda install -c conda-forge libstdcxx-ng # resolves libstdc++ version mismatch if needed 
 
-bash thirdparty/setup_ckpts.sh
+# install FC-CLIP
+cd thirdparty/fc-clip
+pip install -r requirements.txt
+cd ../..
 ```
-- Please see [INSTALL.md](https://github.com/facebookresearch/sam2/blob/main/INSTALL.md) from the original SAM 2 repository for FAQs on potential issues and solutions.
-- Please install [FC-CLIP](https://github.com/bytedance/fc-clip/tree/2b0bbe213070d44da9182530fa2e826fef03f974) with a separate conda environments according to their documentations.
-
-And update the corresponding paths in [configs/default.yaml](configs/default.yaml) for CropFormer and FC-CLIP, accordingly.
 
 
 ## 🔮 Predictions
@@ -84,6 +87,16 @@ python3 TubeletGraph/vlm/prompt_vlm.py -c configs/default.yaml -p vost-val-Ours
 ```
 
 ## 📊 Evaluations
+Please first download [VOST](https://www.vostdataset.org/)， update the corresponding paths in [configs/default.yaml](configs/default.yaml), and run the script below for VOST evaluation.
+```
+python3 eval/process_anno_vost.py -c configs/default.yaml -d vost -s val
+```
+
+Compute predictions
+```
+python eval/run.py -c configs/default.yaml -d vost -s val [--gpus 0 1 2 3]
+```
+
 Compute tracking performances
 ```
 python3 eval/eval.py -c <CONFIG> -p <PRED>

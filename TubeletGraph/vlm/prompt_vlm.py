@@ -12,7 +12,7 @@ import time
 from pycocotools import mask as MaskUtils
 
 sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(__file__))))  # add proj dir to path
-from utils import rle_to_bmask, apply_anno, generate_rand_colors, load_yaml_file
+from utils import rle_to_bmask, apply_anno, generate_rand_colors, load_yaml_file, strip_instance_name
 from TubeletGraph.vlm.html_writer import HTMLWriter
 
 def encode_image_from_np(image_np, is_rgb=True, resize=1):
@@ -166,8 +166,6 @@ if __name__ == "__main__":
     prompt_messages_id, prompt_messages_frame, _, prompt_messages_action = get_message_prompts()
 
     instance_names = [x.removesuffix('.json') for x in os.listdir(pred_track_dir) if x.endswith('.json')]
-    print('Override with all instances in annotation file.')
-    instance_names = json.load(open('assets/vost_tas.json', 'r'))['instances']
 
     for instance_name in tqdm(instance_names, desc="Processing instances"):
         html_out_path = osp.join(out_dir, f'{instance_name}.html')
@@ -182,11 +180,11 @@ if __name__ == "__main__":
         html_writer.add_text(system_prompt)
 
         # Load frame paths and predictions
-        with open(osp.join(data_cfg.processed_anno_dir, instance_name + '.json'), 'r') as f:
-            data = json.load(f)
-            frame_paths = [osp.join(data['frame_dir'], f) for f in data['frame_filenames']]
         with open(osp.join(pred_track_dir, instance_name + '.json'), 'r') as f:
             pred_data = json.load(f)
+        video_name = strip_instance_name(instance_name)
+        frame_names = sorted(os.listdir(osp.join(data_cfg.image_dir, video_name)))
+        frame_paths = [osp.join(data_cfg.image_dir, video_name, f) for f in frame_names]
 
         track_starts, prompt_obj_idx = get_added_track_starts(pred_data)
         
