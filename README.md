@@ -1,5 +1,5 @@
 # Tracking and Understanding Object Transformations
-### [Project Page](https://tubelet-graph.github.io/) | [Paper](https://arxiv.org/abs/2511.04678) | [Video](https://youtu.be/FOs0BEd5-NY)
+### [Project Page](https://tubelet-graph.github.io/) | [Paper](https://arxiv.org/abs/2511.04678) | [Video](https://youtu.be/FOs0BEd5-NY) | [Data](https://github.com/YihongSun/TubeletGraph/tree/main/VOST-TAS#readme)
 
 Official PyTorch implementation for the NeurIPS 2025 paper: "Tracking and Understanding Object Transformations".
 
@@ -9,7 +9,7 @@ Official PyTorch implementation for the NeurIPS 2025 paper: "Tracking and Unders
 
 ## TODOs (By 12/2)
 - [x] Expand and polish [VOST-TAS](https://github.com/YihongSun/TubeletGraph/tree/main/VOST-TAS) documentations and visualizations - Done (10/31)
-- [ ] Expand and polish main code documentations
+- [x] Expand and polish main code documentations - Done (11/10)
 - [ ] Add quick demo from input to all predictions
 
 
