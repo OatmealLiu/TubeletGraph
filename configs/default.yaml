@@ -11,9 +11,8 @@ datasets:
     name: vost
     data_dir: <ADD/YOUR/PATH>/VOST
     image_dir: <ADD/YOUR/PATH>/VOST/JPEGImages
-    split_dir: ./splits/vost
     anno_dir: <ADD/YOUR/PATH>/VOST/Annotations
-    processed_anno_dir: <ADD/YOUR/PATH>/VOST/Annotations_processed
+    split_dir: ./splits/vost
     image_format: "frame*.jpg"
     anno_format:  "frame*.png"
     fps: 5

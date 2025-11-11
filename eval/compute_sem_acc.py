@@ -31,7 +31,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Run object tracking method with ground truth annotations.")
     parser.add_argument('-c', "--config", default="configs/default.yaml", metavar="FILE", help="path to config file",)
     parser.add_argument('-p', '--pred', type=str, help='prediction name to evaluate', required=True)
-    parser.add_argument('-a', '--anno', type=str, default='assets/vost_tas.json', help='annotation path')
+    parser.add_argument('-a', '--anno', type=str, default='VOST-TAS/vost_tas.json', help='annotation path')
     return parser
 
 def compute_action_acc(args, cfg):
@@ -52,7 +52,7 @@ def compute_action_acc(args, cfg):
 
     meta = ['instance[tf=id]:gt_time:pred_time:gt_action_desc:pred_action_desc:response:score']
     scores = []
-    for instance in tqdm(instances):
+    for instance in tqdm(instances, desc='Computing action desc accuracy'):
         with open(osp.join(pred_dir, instance+'.json'), 'r') as f:
             data = json.load(f)
             obj_info = data['obj_info']
@@ -93,7 +93,7 @@ def compute_object_acc(args, cfg):
 
     meta = ['instance[tf=id]:gt_object_desc:pred_object_desc:matched_ious:responses:scores']
     all_scores = []
-    for instance in tqdm(instances):
+    for instance in tqdm(instances, desc='Computing resulting object desc accuracy'):
         with open(osp.join(pred_dir, instance+'.json'), 'r') as f:
             data = json.load(f)
             pred_obj_info = data['obj_info']

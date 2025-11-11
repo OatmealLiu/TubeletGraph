@@ -18,17 +18,13 @@ def save_mask_png(mask, palette, out_path):
     mask.save(out_path)
 
 def json_to_png(args, cfg, data_cfg, png_dir):
-    anno_dir=data_cfg.processed_anno_dir
     org_dir = osp.join(cfg.paths.outdir, args.pred)
     json_paths = glob.glob(osp.join(org_dir, '*.json'))
     json_paths.sort()
 
     out_annos = dict()
     for json_path in json_paths:
-
-        with open(json_path.replace(org_dir, anno_dir), 'r') as f:
-            data = json.load(f)
-            instance_video_name = osp.basename(data['frame_dir'].rstrip('/'))
+        instance_video_name = strip_instance_name(osp.basename(osp.splitext(json_path)[0]))
         
         if instance_video_name not in out_annos:
             # get obj_ind, palette, and size
@@ -41,8 +37,7 @@ def json_to_png(args, cfg, data_cfg, png_dir):
             obj_ind = obj_ind[obj_ind != 0]; obj_ind = obj_ind[obj_ind != 255]
             obj_ind = obj_ind.tolist()
             # get the filenames
-            filenames = data['frame_filenames']
-            filenames = [x.replace('.jpg', '.png') for x in filenames]
+            filenames = [osp.basename(p) for p in all_gt_paths]
 
             out_annos[instance_video_name] = {'filenames': filenames, 'palette': palette, 'size': mask_np.shape, 'obj_ind': obj_ind, 'predictions': {}}
         else:
@@ -149,8 +144,7 @@ if __name__ == "__main__":
             'J(tr)'+subsplit: 100*float(data['J_last-Mean']),
         })
     
-    
-    tally_outpath = osp.join(cfg.paths.evaldir, f'{args.pred}_tally.txt')
+    tally_outpath = osp.join(cfg.paths.evaldir, f'_FINAL_tracking_{args.pred}.txt')
     headers = ['J', 'J_S', 'J_M', 'J_L', 'P', 'R', 'J(tr)', 'J(tr)_S', 'J(tr)_M', 'J(tr)_L', 'P(tr)', 'R(tr)']
     header_str = ' &'.join(['      '] + headers)
     perf_str = '       &' + ' &'.join(['{:.1f}'.format(tally[h]) for h in headers])
@@ -158,5 +152,7 @@ if __name__ == "__main__":
     with open(tally_outpath, 'w') as f:
         f.write(header_str + '\n')
         f.write(perf_str + '\n')
+    print(header_str)
+    print(perf_str)
     print(f"Results saved to {tally_outpath}")
 

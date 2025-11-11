@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
         if args.num_workers > 1:    # shuffle if multiple workers
             random.seed(0); random.shuffle(instance_names)
-            print('Shuffled:', ', '.join(instance_names[:args.num_workers]), '...')
+            print('Shuffled:', ', '.join([x for x,y in instance_names[:args.num_workers]]), '...')
             instance_names = instance_names[args.wid::args.num_workers]
 
     for anno_fname, video_name in instance_names:

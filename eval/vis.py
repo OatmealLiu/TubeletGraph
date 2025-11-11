@@ -1,7 +1,9 @@
+import glob
 import os.path as osp
 import numpy as np
 import os, sys, copy, argparse, json
 from tqdm import tqdm
+from PIL import Image
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
@@ -15,7 +17,8 @@ from matplotlib.patches import FancyBboxPatch, Arrow
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, osp.dirname(osp.dirname(__file__)))  # add proj dir to path
-from utils import generate_rand_colors, load_yaml_file
+from utils import generate_rand_colors, load_yaml_file, rle_to_bmask, apply_anno, write_video, strip_instance_name
+
 
 class DiagramShape:
     def __init__(self, x, y, shape_type, text, border_color, fill_color=None, width=None, height=None, xscale=180, yscale=90):
@@ -234,8 +237,7 @@ def create_diagram_pdf(shapes, shape_arrows, output_filename, padding=50):
     c.save()
 
 def get_obj_color(obj_id, num_colors=10):
-    """
-    Get the color for a given object ID.
+    """ Get the color for a given object ID.
     """
     # Generate a random color based on the object ID
     color = generate_rand_colors(num_colors, lightness=1, seed=10)[obj_id % num_colors]
@@ -277,37 +279,106 @@ def sort_dict_by_value(time_dict):
     sorted_names = sorted(list(time_dict.keys()), key=lambda name: time_dict[name]['object_start_frame_idx'])
     return sorted_names
 
+def vis_pred_mask(org_frames, outputs, anno_frame_ind, contour_thickness=5):
+    vis = [f.copy() for f in org_frames]
+
+    smask = outputs['supix_masks']
+    for vi, anno_idx in enumerate(anno_frame_ind):
+        if str(anno_idx) in smask:
+            for obj_idx in smask[str(anno_idx)].keys():
+                vis[vi] = apply_anno(
+                    vis[vi], 
+                    mask=rle_to_bmask(smask[str(anno_idx)][obj_idx]), 
+                    contour_thickness=contour_thickness, 
+                    mask_color=int(obj_idx), 
+                    mask_alpha=0.3
+                )
+    return vis
+
+
+def vis_wrapper(
+    pred_data,
+    video_dir,
+    out_path,
+    fps,
+):
+    ''' Visualize predicted masks over video frames.'''
+    frame_paths = sorted(glob.glob(osp.join(video_dir, '*')))
+    gt_anno_frame_ind = list(range(len(frame_paths)))
+
+    ## visualize predicted masks
+    org_frames = [np.array(Image.open(f), dtype=np.uint8) for f in frame_paths]
+    vis_frames = vis_pred_mask(org_frames, pred_data, gt_anno_frame_ind)
+
+    write_video(
+        out_path, 
+        [np.hstack([org_frames[i], vis_frames[i]]) for i in range(len(org_frames))], 
+        fps=fps
+    )
+
+def diagram_wrapper(
+    pred_data,
+    out_path,
+    fps,
+):
+    ''' Create diagram PDF from predicted data.'''
+    load_data = pred_data['obj_info']
+    if len(load_data.keys()) == 0:
+        return
+    assert 'object_start_frame_idx' not in load_data['0']
+
+    load_data['0']['object_start_frame_idx'] = 0
+    objs_sorted_by_time = sort_dict_by_value(load_data)
+
+    input_data = [load_data[obj_id] | {'id': obj_id} for obj_id in objs_sorted_by_time]
+    shapes, shape_arrows = create_shape_arrows_from_data(input_data, fps)
+
+    create_diagram_pdf(shapes, shape_arrows, out_path, padding=20)
+
 def get_parser():
     parser = argparse.ArgumentParser(description="Run object tracking methods.")
     parser.add_argument('-c', "--config", default="configs/default.yaml", metavar="FILE", help="path to config file",)
-    parser.add_argument('-d', '--dataset', type=str, help='Dataset to run', default='vost')
-    parser.add_argument('-s', '--split', type=str, help='Dataset split to run', default='val_instance')
-    parser.add_argument('-p', '--pred', type=str, help='prediction directory name', default='vost-val-Annotations_fps5-Ours')
+    parser.add_argument('-p', '--pred', type=str, help='prediction directory name', default='vost-val-Ours_gpt-4.1')
+    parser.add_argument('-i', '--instance', type=str, default=None, help='instance name to visualize (default: all instances)')
     return parser
 
 if __name__ == "__main__":
     args = get_parser().parse_args()
     cfg = load_yaml_file(args.config)
     data_cfg = getattr(cfg.datasets, args.pred.split('-')[0])   # dataset config
-    fps = data_cfg.fps
 
-    pred_track_dir = osp.join(cfg.paths.outdir, args.pred)
-    instance_names = [x.removesuffix('.json') for x in os.listdir(pred_track_dir) if x.endswith('.json')]
+    ## Get instance list to visualize
+    instance_names = [x.removesuffix('.json') for x in os.listdir(osp.join(cfg.paths.outdir, args.pred)) if x.endswith('.json')]
+    if args.instance is not None:
+        assert args.instance in instance_names, f"Instance {args.instance} not found in prediction directory."
+        instance_names = [args.instance]
+
+    ## Create output visualization directory
+    out_vis_dir = osp.join(cfg.paths.visdir, 'predictions', args.pred)
+    os.makedirs(out_vis_dir, exist_ok=True)
 
     for instance_name in tqdm(instance_names, desc="Visualizing instances"):
-        with open(osp.join(pred_track_dir, instance_name + '.json'), 'r') as f:
+
+        with open(osp.join(cfg.paths.outdir, args.pred, instance_name + '.json'), 'r') as f:
             pred_data = json.load(f)
-            load_data = pred_data['obj_info']
-            
-        if len(load_data.keys()) == 0:
-            continue
-        assert 'object_start_frame_idx' not in load_data['0']
-        load_data['0']['object_start_frame_idx'] = 0
-        objs_sorted_by_time = sort_dict_by_value(load_data)
 
-        input_data = [load_data[obj_id] | {'id': obj_id} for obj_id in objs_sorted_by_time]
-        shapes, shape_arrows = create_shape_arrows_from_data(input_data, fps)
+        out_diagram_path = osp.join(out_vis_dir, instance_name+'.pdf')
+        if osp.exists(out_diagram_path):
+            print(f"Skip diagram for {instance_name} as {out_diagram_path} exists")
+        else:
+            diagram_wrapper(
+                pred_data=pred_data,
+                out_path=out_diagram_path,
+                fps=data_cfg.fps,
+            )
 
-        out_path = osp.join(cfg.paths.visdir, 'state_graph', args.pred, instance_name+'.pdf')
-        os.makedirs(osp.dirname(out_path), exist_ok=True)
-        create_diagram_pdf(shapes, shape_arrows, out_path, padding=20)
+        out_vis_path = osp.join(out_vis_dir, instance_name+'.mp4')
+        if osp.exists(out_vis_path):
+            print(f"Skip video for {instance_name} as {out_vis_path} exists")
+        else:
+            vis_wrapper(
+                pred_data=pred_data,
+                video_dir=osp.join(data_cfg.image_dir, strip_instance_name(instance_name)),
+                out_path=out_vis_path,
+                fps=data_cfg.fps,
+            )

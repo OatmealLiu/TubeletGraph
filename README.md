@@ -24,14 +24,14 @@ pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorc
 pip install -r requirements.txt
 bash thirdparty/setup_ckpts.sh
 
-# install SAM2 with multi-mask predictions
+# Install SAM2 with multi-mask predictions
 cd thirdparty/sam2
 pip install -e .
 pip install -e ".[notebooks]"
 python setup.py build_ext --inplace
 cd ../..
 
-# install CropFormer
+# Install CropFormer
 cd thirdparty
 git clone https://github.com/facebookresearch/detectron2.git
 python -m pip install -e detectron2 --no-build-isolation
@@ -41,100 +41,62 @@ bash make.sh
 cd ../../../../../../../..
 # conda install -c conda-forge libstdcxx-ng # resolves libstdc++ version mismatch if needed 
 
-# install FC-CLIP
+# Install FC-CLIP
 cd thirdparty/fc-clip
 pip install -r requirements.txt
 cd ../..
 ```
 
 
-## 🔮 Predictions
-Computing entities (region proposals)
-```
-python3 TubeletGraph/entity_segmentation/cropformer.py -c <CONFIG> -d <DATASET> -s <SPLIT> --num_workers <N> --wid <I>
-## example
-conda activate cropformer      ## requires separation installation
-python3 TubeletGraph/entity_segmentation/cropformer.py -c configs/default.yaml -d vost -s val
-```
+## 🔮 Quick Start
 
-Computing tubelets 
-```
-python3 TubeletGraph/tubelet/compute_tubelets_sam.py -c <CONFIG> -d <DATASET> -s <SPLIT> --num_workers <N> --wid <I>
-## example
-python3 TubeletGraph/tubelet/compute_tubelets_sam.py -c configs/default.yaml -d vost -s val
-```
-
-Computing semantic similarity 
-```
-python3 TubeletGraph/semantic_sim/compute_sim_fcclip.py -c <CONFIG> -d <DATASET> -s <SPLIT> -t <TUBELET_NAME> --num_workers <N> --wid <I>
-## example
-conda activate fcclip           ## requires separation installation
-python3 TubeletGraph/semantic_sim/compute_sim_fcclip.py -c configs/default.yaml -d vost -s val -t tubelets_vost_cropformer
-```
-
-Compute predictions
-```
-python3 TubeletGraph/get_prediction.py -c <CONFIG> -d <DATASET> -s <SPLIT> -m <METHOD>
-## example
-python3 TubeletGraph/get_prediction.py -c configs/default.yaml -d vost -s val -m Ours
-```
-
-Obtain state graph description
-```
-python3 TubeletGraph/vlm/prompt_vlm.py -c <CONFIG> -p <PRED>
-## example
-python3 TubeletGraph/vlm/prompt_vlm.py -c configs/default.yaml -p vost-val-Ours
-```
+🔹 TODO: add script & notebook for single video inference.
 
 ## 📊 Evaluations
-Please first download [VOST](https://www.vostdataset.org/)， update the corresponding paths in [configs/default.yaml](configs/default.yaml), and run the script below for VOST evaluation.
+### VOST
+
+Please first download [VOST](https://www.vostdataset.org/) and update the corresponding paths in [configs/default.yaml](configs/default.yaml).
+
+🔹 To compute dataset-wise predictions, please run the following lines. 
 ```
-python3 eval/process_anno_vost.py -c configs/default.yaml -d vost -s val
+python TubeletGraph/run.py -c configs/default.yaml -d vost -s val -m Ours [--gpus 0 1 2 3]
 ```
 
-Compute predictions
+🔹 To evaluate tracking / state graph performances, please run the following lines. 
 ```
-python eval/run.py -c configs/default.yaml -d vost -s val [--gpus 0 1 2 3]
+python3 eval/eval_tracking.py -c configs/default.yaml -p vost-val-Ours
+python3 eval/eval_state_graph.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1
 ```
+| Data-Split-Method | J | J_S | J_M | J_L | P | R | J(tr) | J(tr)_S | J(tr)_M | J(tr)_L | P(tr) | R(tr) |
+|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+|vost-val-Ours(†)| 50.9 | 41.3 | 53.0 | 68.6 | 68.1 | 63.7 | 36.7 | 23.6 | 40.2 | 60.1 | 55.2 | 47.0
 
-Compute tracking performances
-```
-python3 eval/eval.py -c <CONFIG> -p <PRED>
-## example
-python3 eval/eval.py -c configs/default.yaml -p vost-val-Ours
-```
+| Data-Split-Method_VLM | Sem-Acc Verb | Sem-Acc Obj | Temp-Loc Pre | Temp-Loc Rec | TF Recall (SA) | TF Recall |
+|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+|vost-val-Ours_gpt-4.1(†)| 77.3 | 73.7 | 43.1 | 20.4 | 12.0 | 6.5 |
 
-Compute state-graph performances
-```
-python3 eval/compute_temploc_pr.py -c <CONFIG> -p <PRED>
-python3 eval/compute_sem_acc.py -c <CONFIG> -p <PRED>
-## example
-python3 eval/compute_temploc_pr.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1
-python3 eval/compute_sem_acc.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1
-```
+(†) We observe very minor differences compared to the results in the paper when CropFormer and FC-CLIP are integrated into the same pytorch environment as SAM2.
 
 
 ## 🖼️ Visualizations
-Visualizing entity segmentations
-```
-python3 eval/vis_entities.py -c <CONFIG> -d <DATASET> -m <MODEL> -i <INSTANCE>
-## example
-python3 eval/vis_entities.py -c configs/default.yaml -d vost -m cropformer -i 3161_peel_banana 
-```
 
-Visualizing tubelets
+🔹 To visualizing model predictions, please run the following lines. 
 ```
-python3 eval/vis_tubelets.py -c <CONFIG> -d <DATASET> -m <MODEL> -i <INSTANCE>_<OBJ_ID>
+python3 eval/vis.py -c <CONFIG> -p <PRED> [-i <INSTANCE>_<OBJ_ID>]
 ## example
-python3 eval/vis_tubelets.py -c configs/default.yaml -d vost -m cropformer -i 3161_peel_banana_1
+python3 eval/vis.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1  ## visualize all
+python3 eval/vis.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1 -i 555_tear_aluminium_foil_1
 ```
+- Output visualization can be found in `_vis_out/predictions/vost-val-Ours_gpt-4.1/`, where `<INSTANCE>_<OBJ_ID>.mp4` and `<INSTANCE>_<OBJ_ID>.pdf` contain the visualized object tracks and state graph, respectively.
 
-Visualizing state graphs
+🔹 To visualize the internally-computed spatiotemporal partition (tubelets), please run the following lines. 
 ```
-python3 eval/vis_tubelets.py -c <CONFIG> -p <PRED>
+python3 TubeletGraph/vis/tubelets.py -c <CONFIG> -d <DATASET> -m <MODEL> -i <INSTANCE>_<OBJ_ID>
 ## example
-python3 eval/vis_states.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1
+python3 TubeletGraph/vis/tubelets.py -c configs/default.yaml -d vost -m cropformer -i 555_tear_aluminium_foil_1
 ```
+- Output visualization can be found at `_vis_out/tubelets/tubelets_vost_cropformer_555_tear_aluminium_foil_1.mp4` showing *input video (top-left)*, *entity segmentation (top-right)*, *initial tubelets (bottom-left)*, and *newly emergent tubelets (bottom-right)*.
+
 
 ## Citation
 If you find our work useful in your research, please consider citing our paper:

@@ -10,7 +10,7 @@ import PIL.Image as Image
 from tqdm import tqdm
 
 import sys
-sys.path.insert(0, osp.dirname(osp.dirname(__file__)))  # add proj dir to path
+sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(__file__))))  # add proj dir to path
 from utils import rle_to_bmask, bmask_to_rle, apply_anno, write_video, load_yaml_file, np_hvstack, strip_instance_name
 
 

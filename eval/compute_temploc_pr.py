@@ -82,7 +82,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description="Run object tracking method with ground truth annotations.")
     parser.add_argument('-c', "--config", default="configs/default.yaml", metavar="FILE", help="path to config file",)
     parser.add_argument('-p', '--pred', type=str, help='prediction name to evaluate', required=True)
-    parser.add_argument('-a', '--anno', type=str, default='assets/vost_tas.json', help='annotation path')
+    parser.add_argument('-a', '--anno', type=str, default='VOST-TAS/vost_tas.json', help='annotation path')
     return parser
 
 if __name__ == "__main__":

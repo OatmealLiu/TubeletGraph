@@ -5,8 +5,9 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import argparse
 from pycocotools import mask as maskUtils
+from PIL import Image
 sys.path.insert(0, osp.dirname(osp.dirname(__file__)))  # add proj dir to path
-from utils import load_yaml_file
+from utils import load_yaml_file, bmask_to_rle
 
 def compute_iou_rle(rlep, rleg, rle_ignore=None, val_when_both_empty=1.0):
     if rle_ignore is not None and maskUtils.area(rle_ignore) > 0:
@@ -32,30 +33,47 @@ def compute_iou_rle(rlep, rleg, rle_ignore=None, val_when_both_empty=1.0):
     
     return intersection_area / union_area, precision, recall
 
-def get_performance(predictions2load, pred_dir, anno_dir, obj_id='0', skip_first=True, filter_inst=None, silent=False, compute_iou=True):
-    anno_names = [f for f in os.listdir(anno_dir)]
+def process_anno(data_cfg, data_split, pred_dir, processed_anno_dir):
+    os.makedirs(processed_anno_dir, exist_ok=True)
 
-    for pred_name in predictions2load:
-        if pred_name == 'GT':
-            continue
-        anno_names = set([x for x in os.listdir(osp.join(pred_dir, pred_name)) if x in anno_names])
+    with open(osp.join(data_cfg.split_dir, f'{data_split}.txt'), 'r') as file:
+        vid_names = [x.strip() for x in file.readlines()]
     
-    if filter_inst is not None:
-        anno_names = [f for f in anno_names if osp.splitext(f)[0] in filter_inst]
-        
+    pbar = tqdm(vid_names)
+    for vid_name in pbar:
+        pbar.set_description(f'Checking {vid_name}')
+        original_anno_dir = osp.join(data_cfg.anno_dir, vid_name)
+        anno_fnames = sorted(os.listdir(original_anno_dir))
+        init_anno_path = osp.join(original_anno_dir, anno_fnames[0])
+        init_mask = np.array(Image.open(osp.join(original_anno_dir, init_anno_path)))
+        unique_obj_ids = np.unique(init_mask)
+        track_obj_ids = unique_obj_ids[np.logical_and(unique_obj_ids!=0,unique_obj_ids!=255)]
+
+        pred_found = np.all([osp.exists(osp.join(pred_dir, f'{vid_name}_{obj_id}.json')) for obj_id in track_obj_ids])
+        assert pred_found, f"Predictions for {vid_name} not found in {pred_dir}"
+        anno_found = np.all([osp.exists(osp.join(processed_anno_dir, f'{vid_name}_{obj_id}.json')) for obj_id in track_obj_ids])
+        if anno_found:
+            continue
+    
+        pbar.set_description(f'Saving {vid_name} (Only need to save once, will reuse later)')
+        loaded_anno = {int(a.split('.')[0].replace('frame', '')) : np.array(Image.open(osp.join(original_anno_dir, a))) for a in os.listdir(original_anno_dir)}
+        out_ignore = {anno_fnames.index(f'frame{k:05}.png') : bmask_to_rle(v == 255) for k, v in loaded_anno.items()}
+        for obj_id in track_obj_ids:
+            out_annotations = {anno_fnames.index(f'frame{k:05}.png') : bmask_to_rle(v == obj_id) for k, v in loaded_anno.items()}
+            with open(osp.join(processed_anno_dir, f'{vid_name}_{obj_id}.json'), 'w') as f:
+                json.dump({'annotations': out_annotations, 'ignore': out_ignore}, f)
+
+def get_performance(pred_name, pred_dir, anno_dir, obj_id='0', skip_first=True, silent=False, compute_iou=True):
+    anno_names = [f for f in os.listdir(anno_dir)]
     anno_paths = [osp.join(anno_dir, f) for f in anno_names]
 
-    m_str = ' / '.join(predictions2load)
     if not silent:
-        print(f'Examples to evaluate for {m_str}: {len(anno_paths)}')
+        print(f'Examples to evaluate for {pred_name}: {len(anno_paths)}')
     if len(anno_paths) == 0:
-        raise ValueError(f'No annotations found for {m_str}')
+        raise ValueError(f'No annotations found for {pred_name}')
 
-    masks = {p: {} for p in predictions2load}
-    masks.update({'GT': {}, 'Ignore': {}})
-
+    masks = {pred_name: {}, 'GT': {}, 'Ignore': {}}
     anno_frame_inds = dict()
-
     pbar = tqdm(anno_paths) if not silent else anno_paths
     for anno_path in pbar:
         # Load annotations
@@ -71,47 +89,37 @@ def get_performance(predictions2load, pred_dir, anno_dir, obj_id='0', skip_first
         masks['GT'][osp.basename(anno_path)] = [annotations[str(idx)] for idx in anno_frame_ind]
         masks['Ignore'][osp.basename(anno_path)] = [ignores[str(idx)] for idx in anno_frame_ind]
 
-        for pred_name in predictions2load:
-            pred_json = osp.join(pred_dir, pred_name, osp.basename(anno_path))
-            with open(pred_json, 'r') as f:
-                pred_data = json.load(f)
-                predictions = pred_data['prediction']
+        pred_json = osp.join(pred_dir, pred_name, osp.basename(anno_path))
+        with open(pred_json, 'r') as f:
+            pred_data = json.load(f)
+            predictions = pred_data['prediction']
 
-            masks[pred_name][osp.basename(anno_path)] = [predictions[str(idx)][obj_id if idx != 0 else '0'] for idx in anno_frame_ind]
+        masks[pred_name][osp.basename(anno_path)] = [predictions[str(idx)][obj_id if idx != 0 else '0'] for idx in anno_frame_ind]
         
         anno_frame_inds[osp.basename(anno_path)] = anno_frame_ind
 
     ious, pres, recs = None, None, None
     if compute_iou:
         collection = {
-            pred_name : {
-                anno_name : [compute_iou_rle(pm, gm, im) for pm, gm, im in zip(masks[pred_name][anno_name], masks['GT'][anno_name], masks['Ignore'][anno_name])] 
-                for anno_name in masks['GT'].keys()
-            } 
-            for pred_name in predictions2load
+            anno_name : [compute_iou_rle(
+                pm, gm, im
+            ) for pm, gm, im in zip(
+                masks[pred_name][anno_name], masks['GT'][anno_name], masks['Ignore'][anno_name]
+            )] 
+            for anno_name in masks['GT'].keys()
         }
         ious = {
-            pred_name : {
-                anno_name : [x[0] for x in collection[pred_name][anno_name]]
-                for anno_name in masks['GT'].keys()
-            } 
-            for pred_name in predictions2load
+            anno_name : [x[0] for x in collection[anno_name]]
+            for anno_name in masks['GT'].keys()
         }
         pres = {
-            pred_name : {
-                anno_name : [x[1] for x in collection[pred_name][anno_name]]
-                for anno_name in masks['GT'].keys()
-            } 
-            for pred_name in predictions2load
+            anno_name : [x[1] for x in collection[anno_name]]
+            for anno_name in masks['GT'].keys()
         }
         recs = {
-            pred_name : {
-                anno_name : [x[2] for x in collection[pred_name][anno_name]]
-                for anno_name in masks['GT'].keys()
-            } 
-            for pred_name in predictions2load
+            anno_name : [x[2] for x in collection[anno_name]]
+            for anno_name in masks['GT'].keys()
         }
-        
     return masks, ious, anno_frame_inds, pres, recs
 
 
@@ -128,11 +136,15 @@ def mean_wraper(x):
 if __name__ == "__main__":
     args = get_parser().parse_args()
     cfg = load_yaml_file(args.config)
-    data_cfg = getattr(cfg.datasets, args.pred.split('-')[0])
-    masks, ious, anno_frame_inds, pres, recs = get_performance([args.pred], pred_dir=cfg.paths.outdir, anno_dir=data_cfg.processed_anno_dir, obj_id=cfg.eval.obj_id, skip_first=cfg.eval.skip_first_frame)
+    data_name, data_split, _ = args.pred.split('-')
+    data_cfg = getattr(cfg.datasets, data_name)
+
+    processed_anno_dir = osp.join(cfg.paths.evaldir, f'GT_processed_{data_name}')
+    process_anno(data_cfg, data_split, pred_dir=osp.join(cfg.paths.outdir, args.pred), processed_anno_dir=processed_anno_dir)
+    masks, ious, anno_frame_inds, pres, recs = get_performance(args.pred, pred_dir=cfg.paths.outdir, anno_dir=processed_anno_dir, obj_id=cfg.eval.obj_id, skip_first=cfg.eval.skip_first_frame)
 
     ### Save results to txt file
-    per_vid_meanIoU = {k: float(np.mean(v)) for k, v in ious[args.pred].items()}
+    per_vid_meanIoU = {k: float(np.mean(v)) for k, v in ious.items()}
     vid_names = list(per_vid_meanIoU.keys())
     vid_names.sort()
     
@@ -144,18 +156,19 @@ if __name__ == "__main__":
         vid_names_rng = [f for f in vid_names if rng[0] <= avg_obj_size_prop[f] < rng[1]]
         print(f'Range {rng_name}: {len(vid_names_rng)} videos from {rng[0]*100:.3f}% to {rng[1]*100:.3f}%')
 
-        scores['meanIoU'+rng_name] = np.mean([np.mean(ious[args.pred][f]) for f in vid_names_rng])
-        scores['Precision'+rng_name] = mean_wraper([mean_wraper(pres[args.pred][f]) for f in vid_names_rng])
-        scores['Recall'+rng_name] = mean_wraper([mean_wraper(recs[args.pred][f]) for f in vid_names_rng])
-        scores['acc25'+rng_name] = np.mean([np.mean([vi > 0.25 for vi in ious[args.pred][f]]) for f in vid_names_rng])
-        scores['acc50'+rng_name] = np.mean([np.mean([vi > 0.50 for vi in ious[args.pred][f]]) for f in vid_names_rng])
-        scores['acc75'+rng_name] = np.mean([np.mean([vi > 0.75 for vi in ious[args.pred][f]]) for f in vid_names_rng])
+        scores['meanIoU'+rng_name] = np.mean([np.mean(ious[f]) for f in vid_names_rng])
+        scores['Precision'+rng_name] = mean_wraper([mean_wraper(pres[f]) for f in vid_names_rng])
+        scores['Recall'+rng_name] = mean_wraper([mean_wraper(recs[f]) for f in vid_names_rng])
+        scores['acc25'+rng_name] = np.mean([np.mean([vi > 0.25 for vi in ious[f]]) for f in vid_names_rng])
+        scores['acc50'+rng_name] = np.mean([np.mean([vi > 0.50 for vi in ious[f]]) for f in vid_names_rng])
+        scores['acc75'+rng_name] = np.mean([np.mean([vi > 0.75 for vi in ious[f]]) for f in vid_names_rng])
 
-        last_quarter_ind = {f: int(np.floor(len(ious[args.pred][f]) * 0.75)) for f in vid_names_rng}
-        scores['meanIoU_tr'+rng_name] = np.mean([np.mean(ious[args.pred][f][last_quarter_ind[f]:]) for f in vid_names_rng])
-        scores['Precision_tr'+rng_name] = mean_wraper([mean_wraper(pres[args.pred][f][last_quarter_ind[f]:]) for f in vid_names_rng])
-        scores['Recall_tr'+rng_name] = mean_wraper([mean_wraper(recs[args.pred][f][last_quarter_ind[f]:]) for f in vid_names_rng])
+        last_quarter_ind = {f: int(np.floor(len(ious[f]) * 0.75)) for f in vid_names_rng}
+        scores['meanIoU_tr'+rng_name] = np.mean([np.mean(ious[f][last_quarter_ind[f]:]) for f in vid_names_rng])
+        scores['Precision_tr'+rng_name] = mean_wraper([mean_wraper(pres[f][last_quarter_ind[f]:]) for f in vid_names_rng])
+        scores['Recall_tr'+rng_name] = mean_wraper([mean_wraper(recs[f][last_quarter_ind[f]:]) for f in vid_names_rng])
     
+    os.makedirs(cfg.paths.evaldir, exist_ok=True)
     output_txt_path = osp.join(cfg.paths.evaldir, f'{args.pred}.txt')
 
     with open(output_txt_path, 'w') as f:
