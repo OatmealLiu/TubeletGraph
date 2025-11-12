@@ -73,10 +73,10 @@ python3 eval/eval_state_graph.py -c configs/default.yaml -p vost-val-Ours_gpt-4.
 
 | Data-Split-Method_VLM | Sem-Acc Verb | Sem-Acc Obj | Temp-Loc Pre | Temp-Loc Rec | TF Recall (SA) | TF Recall |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-|vost-val-Ours_gpt-4.1(†)| 77.3 | 73.7 | 43.1 | 20.4 | 12.0 | 6.5 |
+|vost-val-Ours_gpt-4.1| 81.8 (*) | 72.3 (*) | 43.1 | 20.4 | 12.0 | 6.5 (*) |
 
-(†) We observe very minor differences compared to the results in the paper when CropFormer and FC-CLIP are integrated into the same pytorch environment as SAM2.
-
+(†) We observe very minor differences compared to the results in the paper when CropFormer and FC-CLIP are integrated into the same pytorch environment as SAM2.  
+(*) Minor variance may be observed across runs due to non-deterministic LLM behavior in metric computation.
 
 ## 🖼️ Visualizations
 
