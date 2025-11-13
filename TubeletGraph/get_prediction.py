@@ -38,7 +38,7 @@ if __name__ == "__main__":
     cfg = make_config(args, my_cfg)
 
     ## set tubelet dir
-    cfg.method.tubelet_dir = osp.join(cfg.intermdir, cfg.method.tubelet_dirname)
+    cfg.method.tubelet_dir = osp.join(cfg.intermdir, cfg.method.tubelet_dirname.format(args.dataset))
     cfg.method.__dict__['_content'].pop('tubelet_dirname')
 
     ## gather instance names from split txt file

@@ -96,10 +96,11 @@ def setup(sam2, instance_name, vid_dir, entity_dir):
     assert num_frames == len(entity.keys())
     return entity, num_frames, sam2
 
-def compute_save_init_tubes(cfg, sam2, instance_name, save_path, max_obj_num=150):
+def compute_save_init_tubes(cfg, instance_name, save_path, max_obj_num=150):
     """ Compute and save initial tracks from super pixels """
     if osp.exists(save_path):
-        return None
+        return
+    sam2 = get_tracker(cfg.tracker)
     entity, num_frames, sam2 = setup(sam2, instance_name, cfg.data.image_dir, cfg.entity_dir)        
     init_entity = entity[str(0)]
     tracked_objs = dict()
@@ -120,8 +121,8 @@ def compute_save_init_tubes(cfg, sam2, instance_name, save_path, max_obj_num=150
 
     dim = entity['0']['0']['size']
     save_all_to_json({'all_tracks': all_tracks, 'tracked_objs': tracked_objs}, save_path, dim=dim)
-    sam2.predictor.reset_state(sam2.inference_state)
-    return entity, num_frames, sam2
+    sam2.clear_all_cache()
+    torch.cuda.empty_cache()
 
 
 def resolve_init_entity_prompt_conflicts(cfg, sam2, all_tracks, tracked_objs, prompt_mask):
@@ -169,6 +170,7 @@ def resolve_init_entity_prompt_conflicts(cfg, sam2, all_tracks, tracked_objs, pr
 def compute_pred(cfg, prompt_mask, instance_name, precomp_mm_path):
     """ Compute the precomputed masks.
     """
+    print(f'Computing masks for {instance_name} with {cfg.prox_tracker.name}')
     sam2_mm = get_tracker(cfg.prox_tracker)
     sam2_mm.initialize(video_dir=osp.join(cfg.data.image_dir, instance_name))
     output = sam2_mm.track(mask=rle_to_bmask(prompt_mask), frame_idx=0)
@@ -178,15 +180,12 @@ def compute_pred(cfg, prompt_mask, instance_name, precomp_mm_path):
     sam2_mm.clear_all_cache()
     torch.cuda.empty_cache()
 
-def compute_save_all_tubes(cfg, sam2, instance_name, all_tracks, tracked_objs, prompt_mask, final_all_tracks_path):
+def compute_save_all_tubes(cfg, sam2, dataset_name, entity, all_tracks, tracked_objs, prompt_mask, final_all_tracks_path):
     # Load precomputed tracks
     nothing_in_init = len(tracked_objs) == 0
     prompt_obj_id = max([int(x) for x in tracked_objs.keys()]) + 1 if not nothing_in_init else 1
 
-    precomp_mm_path = osp.join(cfg.paths.intermdir, f'pred_{args.dataset}_{cfg.prox_tracker.name}', osp.basename(final_all_tracks_path))
-    if not osp.exists(precomp_mm_path):
-        compute_pred(cfg, prompt_mask, instance_name, precomp_mm_path)
-
+    precomp_mm_path = osp.join(cfg.paths.intermdir, f'pred_{dataset_name}_{cfg.prox_tracker.name}', osp.basename(final_all_tracks_path))
     print(f'Adding Obj {prompt_obj_id} from {precomp_mm_path}')
     with open(precomp_mm_path, 'r') as f:
         data = json.load(f)
@@ -309,16 +308,12 @@ if __name__ == "__main__":
             random.seed(0); random.shuffle(instance_names)
             print('Shuffled:', ', '.join(instance_names[:cfg.num_workers]), '...')
             instance_names = instance_names[cfg.wid::cfg.num_workers]
-    
-    # Make model
-    sam2 = get_tracker(cfg.tracker)
 
     # set save directories
     init_save_dir = osp.join(cfg.paths.intermdir, f'tubelets_{args.dataset}_{cfg.entity_method}_init')
     final_save_dir = init_save_dir.rstrip('_init')
-    for d in [init_save_dir, final_save_dir]:
-        if not osp.exists(d):
-            os.makedirs(d)
+    os.makedirs(init_save_dir, exist_ok=True)
+    os.makedirs(final_save_dir, exist_ok=True)
 
     for instance_idx, instance_name in enumerate(instance_names):
         print('=' * 20)
@@ -326,33 +321,35 @@ if __name__ == "__main__":
         
         ### Step 1: Process all tracks from every super pixel in the initial frame, disregarding the mask prompt
         init_all_tracks_path = osp.join(init_save_dir, '{}.json'.format(instance_name))
-        loaded = compute_save_init_tubes(cfg, sam2, instance_name, init_all_tracks_path)
+        compute_save_init_tubes(cfg, instance_name, init_all_tracks_path)
 
+        ### Step 2: Process and save all tracks per each prompt object
         init_prompt_path = sorted(glob.glob(
             osp.join(cfg.data.anno_dir, instance_name, cfg.data.anno_format)
         ))[0]
         prompt_objs = load_anno(init_prompt_path)  # dict('1': rle, ...)
-
         for obj_idx, prompt_mask in prompt_objs.items():
-            ### Process and all new tracks, using the mask prompt
+            ## Process and all new tracks, using the mask prompt
             final_all_tracks_path = osp.join(final_save_dir, f'{instance_name}_{obj_idx}.json')
             if osp.exists(final_all_tracks_path):
                 print('Final path found, skipped')
                 continue
-            
+
+            ## Compute original SAM2 predictions with multi-mask outputs for proximity similarity
+            precomp_mm_path = osp.join(cfg.paths.intermdir, f'pred_{args.dataset}_{cfg.prox_tracker.name}', osp.basename(final_all_tracks_path))
+            if not osp.exists(precomp_mm_path):
+                compute_pred(cfg, prompt_mask, instance_name, precomp_mm_path)
+
+            ## Fill and track newly emergent tubelets
+            sam2 = get_tracker(cfg.tracker)
+            entity, _, sam2 = setup(sam2, instance_name, cfg.data.image_dir, cfg.entity_dir)
             with open(init_all_tracks_path, 'r') as f:
                 data = json.load(f)
                 all_tracks = {int(k): {int(k1): v1 for k1, v1 in v.items()} for k, v in data['all_tracks'].items()}
                 tracked_objs = {int(k): v for k, v in data['tracked_objs'].items()}
-
-            if loaded is None:
-                entity, _, sam2 = setup(sam2, instance_name, cfg.data.image_dir, cfg.entity_dir)
-            else:
-                entity, _, sam2 = loaded
-            
             resolve_init_entity_prompt_conflicts(cfg, sam2, all_tracks, tracked_objs, prompt_mask)
-            compute_save_all_tubes(cfg, sam2, instance_name, all_tracks, tracked_objs, prompt_mask, final_all_tracks_path)
-        
-        ## clear cache after processing one video
-        sam2.clear_all_cache()
-        torch.cuda.empty_cache()
+            compute_save_all_tubes(cfg, sam2, args.dataset, entity, all_tracks, tracked_objs, prompt_mask, final_all_tracks_path)
+            
+            ## clear cache after processing
+            sam2.clear_all_cache()
+            torch.cuda.empty_cache()

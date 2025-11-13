@@ -28,16 +28,16 @@ def json_to_png(args, cfg, data_cfg, png_dir):
         
         if instance_video_name not in out_annos:
             # get obj_ind, palette, and size
-            all_gt_paths = glob.glob(osp.join(data_cfg.anno_dir, instance_video_name, '*.png'))
-            all_gt_paths.sort()
-            mask = Image.open(all_gt_paths[0])
+            prompt_mask_path = sorted(glob.glob(osp.join(data_cfg.anno_dir, instance_video_name, data_cfg.anno_format)))[0]
+            mask = Image.open(prompt_mask_path)
             palette = mask.getpalette()
             mask_np = np.array(mask)
             obj_ind = np.unique(mask_np)
             obj_ind = obj_ind[obj_ind != 0]; obj_ind = obj_ind[obj_ind != 255]
             obj_ind = obj_ind.tolist()
             # get the filenames
-            filenames = [osp.basename(p) for p in all_gt_paths]
+            all_rgb_paths = sorted(glob.glob(osp.join(data_cfg.image_dir, instance_video_name, data_cfg.image_format)))
+            filenames = [osp.basename(p) for p in all_rgb_paths]
 
             out_annos[instance_video_name] = {'filenames': filenames, 'palette': palette, 'size': mask_np.shape, 'obj_ind': obj_ind, 'predictions': {}}
         else:
@@ -65,7 +65,7 @@ def json_to_png(args, cfg, data_cfg, png_dir):
         def func():
             out_dir = osp.join(png_dir, instance_video_name)
             os.makedirs(out_dir, exist_ok=True)
-            filenames = info['filenames']
+            filenames = [osp.splitext(f)[0]+'.png' for f in info['filenames']]
             palette = info['palette']
 
             pred_to_write = [None for _ in range(len(filenames))]

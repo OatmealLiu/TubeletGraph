@@ -43,8 +43,10 @@ def process_anno(data_cfg, data_split, pred_dir, processed_anno_dir):
     for vid_name in pbar:
         pbar.set_description(f'Checking {vid_name}')
         original_anno_dir = osp.join(data_cfg.anno_dir, vid_name)
-        anno_fnames = sorted(os.listdir(original_anno_dir))
-        init_anno_path = osp.join(original_anno_dir, anno_fnames[0])
+        rgb_fnames = [osp.splitext(f)[0] for f in sorted(os.listdir(osp.join(data_cfg.image_dir, vid_name)))]
+
+        init_anno_fname = sorted(os.listdir(original_anno_dir))[0]
+        init_anno_path = osp.join(original_anno_dir, init_anno_fname)
         init_mask = np.array(Image.open(osp.join(original_anno_dir, init_anno_path)))
         unique_obj_ids = np.unique(init_mask)
         track_obj_ids = unique_obj_ids[np.logical_and(unique_obj_ids!=0,unique_obj_ids!=255)]
@@ -56,10 +58,10 @@ def process_anno(data_cfg, data_split, pred_dir, processed_anno_dir):
             continue
     
         pbar.set_description(f'Saving {vid_name} (Only need to save once, will reuse later)')
-        loaded_anno = {int(a.split('.')[0].replace('frame', '')) : np.array(Image.open(osp.join(original_anno_dir, a))) for a in os.listdir(original_anno_dir)}
-        out_ignore = {anno_fnames.index(f'frame{k:05}.png') : bmask_to_rle(v == 255) for k, v in loaded_anno.items()}
+        loaded_anno = {osp.splitext(a)[0] : np.array(Image.open(osp.join(original_anno_dir, a))) for a in os.listdir(original_anno_dir)}
+        out_ignore = {rgb_fnames.index(k) : bmask_to_rle(v == 255) for k, v in loaded_anno.items()}
         for obj_id in track_obj_ids:
-            out_annotations = {anno_fnames.index(f'frame{k:05}.png') : bmask_to_rle(v == obj_id) for k, v in loaded_anno.items()}
+            out_annotations = {rgb_fnames.index(k) : bmask_to_rle(v == obj_id) for k, v in loaded_anno.items()}
             with open(osp.join(processed_anno_dir, f'{vid_name}_{obj_id}.json'), 'w') as f:
                 json.dump({'annotations': out_annotations, 'ignore': out_ignore}, f)
 

@@ -15,7 +15,8 @@ Official PyTorch implementation for the NeurIPS 2025 paper: "Tracking and Unders
 
 ## ⚙️ Installation
 The code is tested with `python=3.10`, `torch==2.7.0+cu126` and `torchvision==0.22.0+cu126` on a RTX A6000 GPU.
-```
+```bash
+# Clone and setup environment
 git clone --recurse-submodules https://github.com/YihongSun/TubeletGraph/
 cd TubeletGraph/
 conda create -n tubeletgraph python=3.10 -y
@@ -39,12 +40,16 @@ ln -s "$(pwd)"/Entity/Entityv2/CropFormer detectron2/projects/CropFormer
 cd detectron2/projects/CropFormer/mask2former/modeling/pixel_decoder/ops
 bash make.sh
 cd ../../../../../../../..
-# conda install -c conda-forge libstdcxx-ng # resolves libstdc++ version mismatch if needed 
+# conda install -c conda-forge libstdcxx-ng # if libstdc++ version mismatch occurs
 
 # Install FC-CLIP
 cd thirdparty/fc-clip
 pip install -r requirements.txt
 cd ../..
+```
+In addition, please configure your OpenAI API key (required for GPT-4.1 querying) as follows (add to `~/.bashrc` to persist across sessions).
+```bash
+export OPENAI_API_KEY="sk-..."
 ```
 
 
@@ -58,18 +63,18 @@ cd ../..
 Please first download [VOST](https://www.vostdataset.org/) and update the corresponding paths in [configs/default.yaml](configs/default.yaml).
 
 🔹 To compute dataset-wise predictions, please run the following lines. 
-```
-python TubeletGraph/run.py -c configs/default.yaml -d vost -s val -m Ours [--gpus 0 1 2 3]
+```bash
+python TubeletGraph/run.py -c configs/default.yaml -d vost -s val -m Ours [--gpus 0 1 2 3]  # optioanl --gpus flag for multi-GPU 
 ```
 
 🔹 To evaluate tracking / state graph performances, please run the following lines. 
-```
+```bash
 python3 eval/eval_tracking.py -c configs/default.yaml -p vost-val-Ours
 python3 eval/eval_state_graph.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1
 ```
 | Data-Split-Method | J | J_S | J_M | J_L | P | R | J(tr) | J(tr)_S | J(tr)_M | J(tr)_L | P(tr) | R(tr) |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
-|vost-val-Ours(†)| 50.9 | 41.3 | 53.0 | 68.6 | 68.1 | 63.7 | 36.7 | 23.6 | 40.2 | 60.1 | 55.2 | 47.0
+|vost-val-Ours(†)| 50.9 | 41.3 | 53.0 | 68.6 | 68.1 | 63.7 | 36.7 | 23.6 | 40.2 | 60.1 | 55.2 | 47.0 |
 
 | Data-Split-Method_VLM | Sem-Acc Verb | Sem-Acc Obj | Temp-Loc Pre | Temp-Loc Rec | TF Recall (SA) | TF Recall |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|
@@ -78,11 +83,31 @@ python3 eval/eval_state_graph.py -c configs/default.yaml -p vost-val-Ours_gpt-4.
 (†) We observe very minor differences compared to the results in the paper when CropFormer and FC-CLIP are integrated into the same pytorch environment as SAM2.  
 (*) Minor variance may be observed across runs due to non-deterministic LLM behavior in metric computation.
 
+
+### VSCOS
+
+Please first download [VSCOS](https://venom12138.github.io/VSCOS.github.io/) and update the corresponding paths in [configs/default.yaml](configs/default.yaml).
+
+🔹 To compute dataset-wise predictions, please run the following lines. 
+```bash
+python TubeletGraph/run.py -c configs/default.yaml -d vscos -s val -m Ours [--gpus 0 1 2 3]  # optioanl --gpus flag for multi-GPU 
+```
+
+🔹 To evaluate tracking / state graph performances, please run the following lines. 
+```bash
+python3 eval/eval_tracking.py -c configs/default.yaml -p vscos-val-Ours
+```
+| Data-Split-Method | J | J_S | J_M | J_L | P | R | J(tr) | J(tr)_S | J(tr)_M | J(tr)_L | P(tr) | R(tr) |
+|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+|vscos-val-Ours| 75.9 | 67.8 | 79.1 | 81.0 | 89.3 | 82.9 | 72.2 | 60.7 | 77.6 | 78.4 | 87.4 | 81.7 |
+
+
+
 ## 🖼️ Visualizations
 
 🔹 To visualizing model predictions, please run the following lines. 
-```
-python3 eval/vis.py -c <CONFIG> -p <PRED> [-i <INSTANCE>_<OBJ_ID>]
+```bash
+python3 eval/vis.py -c <CONFIG> -p <PRED> [-i <INSTANCE>_<OBJ_ID>]  # optioanl -i flag to visualize only 1 instance 
 ## example
 python3 eval/vis.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1  ## visualize all
 python3 eval/vis.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1 -i 555_tear_aluminium_foil_1
@@ -90,7 +115,7 @@ python3 eval/vis.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1 -i 555_tear
 - Output visualization can be found in `_vis_out/predictions/vost-val-Ours_gpt-4.1/`, where `<INSTANCE>_<OBJ_ID>.mp4` and `<INSTANCE>_<OBJ_ID>.pdf` contain the visualized object tracks and state graph, respectively.
 
 🔹 To visualize the internally-computed spatiotemporal partition (tubelets), please run the following lines. 
-```
+```bash
 python3 TubeletGraph/vis/tubelets.py -c <CONFIG> -d <DATASET> -m <MODEL> -i <INSTANCE>_<OBJ_ID>
 ## example
 python3 TubeletGraph/vis/tubelets.py -c configs/default.yaml -d vost -m cropformer -i 555_tear_aluminium_foil_1
@@ -100,7 +125,7 @@ python3 TubeletGraph/vis/tubelets.py -c configs/default.yaml -d vost -m cropform
 
 ## Citation
 If you find our work useful in your research, please consider citing our paper:
-```
+```bibtex
 @article{sun2025tracking,
   title={Tracking and Understanding Object Transformations},
   author={Sun, Yihong and Yang, Xinyu and Sun, Jennifer J and Hariharan, Bharath},

@@ -16,7 +16,7 @@ class SAM2:
     def initialize(self, **info):
         self.inference_state = self.predictor.init_state(video_path=info['video_dir'])
         
-    def track(self, mask, frame_idx=0):
+    def track(self, mask, frame_idx=0, clean_prev_memory=20):
         self.predictor.reset_state(self.inference_state)
         _, _, _ = self.predictor.add_new_mask(
             inference_state=self.inference_state,
@@ -78,6 +78,13 @@ class SAM2:
                         ii: obj_frame_out['ious'][i, rank].item() 
                             for ii, rank in enumerate(ious_rank)
                     }
+            
+            delete_f_idx = out_frame_idx - clean_prev_memory
+            for obj_idx, obj_output in self.inference_state['output_dict_per_obj'].items():
+                if delete_f_idx in obj_output['non_cond_frame_outputs'].keys():
+                    obj_output['non_cond_frame_outputs'][delete_f_idx].clear()
+            torch.cuda.empty_cache()
+
         return output
 
     def clear_all_cache(self):

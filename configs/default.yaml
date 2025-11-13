@@ -16,6 +16,15 @@ datasets:
     image_format: "frame*.jpg"
     anno_format:  "frame*.png"
     fps: 5
+  vscos:
+    name: vscos
+    data_dir: <ADD/YOUR/PATH>/VSCOS
+    image_dir: <ADD/YOUR/PATH>/VSCOS/JPEGImages
+    anno_dir: <ADD/YOUR/PATH>/VSCOS/Annotations
+    split_dir: ./splits/vscos
+    image_format: "frame_*.jpg"
+    anno_format:  "frame_*.png"
+    fps: 60
 
 entity_seg:
   cropformer:
@@ -64,7 +73,7 @@ methods:
   Ours:
     name: Ours
     module: TubeletGraph
-    tubelet_dirname: "tubelets_vost_cropformer_fcclip"
+    tubelet_dirname: "tubelets_{}_cropformer_fcclip"
     thrds: 
       mm_cover: 0.3
       clip_sim_max: 0.7
