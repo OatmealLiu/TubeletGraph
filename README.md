@@ -89,7 +89,7 @@ python3 eval/eval_state_graph.py -c configs/default.yaml -p vost-val-Ours_gpt-4.
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |vost-val-Ours(†)| 50.9 | 41.3 | 53.0 | 68.6 | 68.1 | 63.7 | 36.7 | 23.6 | 40.2 | 60.1 | 55.2 | 47.0 |
 
-| Data-Split-Method_VLM | Verb Acc $S_V$ | Obj Acc $S_O$ | Temp-Loc Pre $T_P$ | Temp-Loc Rec $T_R$ | TF Recall $H_{ST}$ | TF Recall $H$ |
+| Data-Split-Method_VLM | Sem-Acc Verb $S_V$ | Sem-Acc Obj $S_O$ | Temp-Loc Pre $T_P$ | Temp-Loc Rec $T_R$ | Overall-Rec(ST) $H_{ST}$ | Overall-Rec $H$ |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |vost-val-Ours_gpt-4.1| 81.8 (*) | 72.3 (*) | 43.1 | 20.4 | 12.0 | 6.5 (*) |
 
