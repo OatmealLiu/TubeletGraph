@@ -3,6 +3,8 @@ _interm_out/
 _pred_out/
 _vis_out/
 _quant_out/
+_custom_dataset/
+splits/custom/
 
 
 # Byte-compiled / optimized / DLL files

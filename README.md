@@ -7,12 +7,6 @@ Official PyTorch implementation for the NeurIPS 2025 paper: "Tracking and Unders
 
 ![](assets/teaser.png)
 
-## TODOs (By 12/2)
-- [x] Expand and polish [VOST-TAS](https://github.com/YihongSun/TubeletGraph/tree/main/VOST-TAS) documentations and visualizations - Done (10/31)
-- [x] Expand and polish main code documentations - Done (11/10)
-- [ ] Add quick demo from input to all predictions
-
-
 ## ⚙️ Installation
 The code is tested with `python=3.10`, `torch==2.7.0+cu126` and `torchvision==0.22.0+cu126` on a RTX A6000 GPU.
 ```bash
@@ -55,7 +49,26 @@ export OPENAI_API_KEY="sk-..."
 
 ## 🔮 Quick Start
 
-🔹 TODO: add script & notebook for single video inference.
+You can quickly run TubeletGraph on your own videos using `quick_run.py`:
+
+```bash
+python quick_run.py \
+    --input_dir <VIDEO_FRAME_DIR> \
+    --input_mask <FIRST_FRAME_MASK.png> \
+    [--fps 30] \
+```
+It generates video visualizations (.mp4) and state graph diagrams (.pdf) for all prompt objects in `<FIRST_FRAME_MASK.png>`. 
+- `--input_dir`: Directory containing video frames as individual images (e.g., `frame0001.jpg`, `frame0002.jpg`, ...)
+- `--input_mask`: PNG annotation of the first frame with object IDs as pixel values (0=background, 1=object1, 2=object2, ..., 255=ignore)
+- `--fps` (optional): Frames per second, default=30
+
+**Example: 0334_cut_fruit_1**
+```bash
+python quick_run.py --input_dir assets/example/0334_cut_fruit_1 --input_mask assets/example/0334_cut_fruit_1_0000000.png
+```
+The output visualizations are found under `./_pred_out/predictions/custom-0334_cut_fruit_1-Ours_gpt-4.1`.
+- To ensure consistency, the expected outputs are pre-computed and found under `./assets/expected_output/` 
+
 
 ## 📊 Evaluations
 ### VOST
@@ -64,7 +77,7 @@ Please first download [VOST](https://www.vostdataset.org/) and update the corres
 
 🔹 To compute dataset-wise predictions, please run the following lines. 
 ```bash
-python TubeletGraph/run.py -c configs/default.yaml -d vost -s val -m Ours [--gpus 0 1 2 3]  # optioanl --gpus flag for multi-GPU 
+python TubeletGraph/run.py -c configs/default.yaml -d vost -s val -m Ours [--gpus 0 1 2 3]  # optional --gpus flag for multi-GPU 
 ```
 
 🔹 To evaluate tracking / state graph performances, please run the following lines. 
@@ -90,10 +103,10 @@ Please first download [VSCOS](https://venom12138.github.io/VSCOS.github.io/) and
 
 🔹 To compute dataset-wise predictions, please run the following lines. 
 ```bash
-python TubeletGraph/run.py -c configs/default.yaml -d vscos -s val -m Ours [--gpus 0 1 2 3]  # optioanl --gpus flag for multi-GPU 
+python TubeletGraph/run.py -c configs/default.yaml -d vscos -s val -m Ours [--gpus 0 1 2 3]  # optional --gpus flag for multi-GPU 
 ```
 
-🔹 To evaluate tracking / state graph performances, please run the following lines. 
+🔹 To evaluate tracking performances, please run the following lines. 
 ```bash
 python3 eval/eval_tracking.py -c configs/default.yaml -p vscos-val-Ours
 ```
@@ -102,12 +115,46 @@ python3 eval/eval_tracking.py -c configs/default.yaml -p vscos-val-Ours
 |vscos-val-Ours| 75.9 | 67.8 | 79.1 | 81.0 | 89.3 | 82.9 | 72.2 | 60.7 | 77.6 | 78.4 | 87.4 | 81.7 |
 
 
+### Custom Dataset
+
+**Option 1: Quick Run (Recommended for Single Videos)**
+```bash
+python quick_run.py --input_dir  --input_mask 
+```
+This automatically handles dataset setup and config generation.
+
+**Option 2: Manual Config (For Dataset-Wide Evaluation)**
+
+🔹 To run on entire datasets with multiple videos, please add the following lines to `configs/default.yaml` under `datasets`:
+```
+datasets:
+  <data_name>:
+    name: <data_name>
+    data_dir: <DATA_PATH>
+    image_dir: <DATA_PATH>/JPEGImages
+    anno_dir: <DATA_PATH>/Annotations
+    split_dir: <DATA_SPLIT_PATH>
+    image_format: <IMAGE_FORMAT>  # e.g., "*.jpg"
+    anno_format: <ANNO_FORMAT>  # e.g., "*.png"
+    fps: <FPS>  # for visualization fps
+```
+🔹 Then, run the following line to compute dataset-wise predictions.
+```bash
+python TubeletGraph/run.py -c configs/default.yaml -d <data_name> -s <split> -m Ours [--gpus 0 1 2 3]  # optional --gpus flag for multi-GPU 
+```
+- Note that `<DATA_SPLIT_PATH>/<split>.txt` should be found.
+
+🔹 To evaluate tracking performances, please run the following lines.
+```bash
+python3 eval/eval_tracking.py -c configs/default.yaml -p <data_name>-<split>-Ours
+```
+- In this case, `<split>` should be `val` and `val-{S/M/L}.txt` should also be found under `<DATA_SPLIT_PATH>`. 
 
 ## 🖼️ Visualizations
 
 🔹 To visualizing model predictions, please run the following lines. 
 ```bash
-python3 eval/vis.py -c <CONFIG> -p <PRED> [-i <INSTANCE>_<OBJ_ID>]  # optioanl -i flag to visualize only 1 instance 
+python3 eval/vis.py -c <CONFIG> -p <PRED> [-i <INSTANCE>_<OBJ_ID>]  # optional -i flag to visualize only 1 instance 
 ## example
 python3 eval/vis.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1  ## visualize all
 python3 eval/vis.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1 -i 555_tear_aluminium_foil_1
