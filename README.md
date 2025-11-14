@@ -85,11 +85,11 @@ python TubeletGraph/run.py -c configs/default.yaml -d vost -s val -m Ours [--gpu
 python3 eval/eval_tracking.py -c configs/default.yaml -p vost-val-Ours
 python3 eval/eval_state_graph.py -c configs/default.yaml -p vost-val-Ours_gpt-4.1
 ```
-| Data-Split-Method | J | J_S | J_M | J_L | P | R | J(tr) | J(tr)_S | J(tr)_M | J(tr)_L | P(tr) | R(tr) |
+| Data-Split-Method | $J$ | $J^S$ | $J^M$ | $J^L$ | $P$ | $R$ | $J_{tr}$ | $J_{tr}^S$ | $J_{tr}^M$ | $J_{tr}^L$ | $P_{tr}$ | $R_{tr}$ |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |vost-val-Ours(†)| 50.9 | 41.3 | 53.0 | 68.6 | 68.1 | 63.7 | 36.7 | 23.6 | 40.2 | 60.1 | 55.2 | 47.0 |
 
-| Data-Split-Method_VLM | Sem-Acc Verb | Sem-Acc Obj | Temp-Loc Pre | Temp-Loc Rec | TF Recall (SA) | TF Recall |
+| Data-Split-Method_VLM | Verb Acc $S_V$ | Obj Acc $S_O$ | Temp-Loc Pre $T_P$ | Temp-Loc Rec $T_R$ | TF Recall $H_{ST}$ | TF Recall $H$ |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |vost-val-Ours_gpt-4.1| 81.8 (*) | 72.3 (*) | 43.1 | 20.4 | 12.0 | 6.5 (*) |
 
@@ -110,7 +110,7 @@ python TubeletGraph/run.py -c configs/default.yaml -d vscos -s val -m Ours [--gp
 ```bash
 python3 eval/eval_tracking.py -c configs/default.yaml -p vscos-val-Ours
 ```
-| Data-Split-Method | J | J_S | J_M | J_L | P | R | J(tr) | J(tr)_S | J(tr)_M | J(tr)_L | P(tr) | R(tr) |
+| Data-Split-Method | $J$ | $J^S$ | $J^M$ | $J^L$ | $P$ | $R$ | $J_{tr}$ | $J_{tr}^S$ | $J_{tr}^M$ | $J_{tr}^L$ | $P_{tr}$ | $R_{tr}$ |
 |:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
 |vscos-val-Ours| 75.9 | 67.8 | 79.1 | 81.0 | 89.3 | 82.9 | 72.2 | 60.7 | 77.6 | 78.4 | 87.4 | 81.7 |
 
