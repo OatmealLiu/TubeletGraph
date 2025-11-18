@@ -115,6 +115,25 @@ python3 eval/eval_tracking.py -c configs/default.yaml -p vscos-val-Ours
 |vscos-val-Ours| 75.9 | 67.8 | 79.1 | 81.0 | 89.3 | 82.9 | 72.2 | 60.7 | 77.6 | 78.4 | 87.4 | 81.7 |
 
 
+### M<sup>3</sup>-VOS
+
+Please first download [M<sup>3</sup>-VOS](https://zixuan-chen.github.io/M-cube-VOS.github.io/) and update the corresponding paths in [configs/default.yaml](configs/default.yaml).
+
+🔹 To compute dataset-wise predictions, please run the following lines. 
+```bash
+python TubeletGraph/run.py -c configs/default.yaml -d m3vos -s val -m Ours [--gpus 0 1 2 3]  # optional --gpus flag for multi-GPU 
+```
+
+🔹 To evaluate tracking performances, please run the following lines. 
+```bash
+python3 eval/eval_tracking.py -c configs/default.yaml -p m3vos-val-Ours
+```
+| Data-Split-Method | $J$ | $J^S$ | $J^M$ | $J^L$ | $P$ | $R$ | $J_{tr}$ | $J_{tr}^S$ | $J_{tr}^M$ | $J_{tr}^L$ | $P_{tr}$ | $R_{tr}$ |
+|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|:----:|
+|m3vos-val-Ours(†)| 74.1 | 67.4 | 78.7 | 78.2 | 88.4 | 79.8 | 64.1 | 55.9 | 68.5 | 70.3 | 82.4 | 71.5|
+
+(†) We observe very minor differences compared to the results in the paper when CropFormer and FC-CLIP are integrated into the same pytorch environment as SAM2. 
+
 ### Custom Dataset
 
 **Option 1: Quick Run (Recommended for Single Videos)**

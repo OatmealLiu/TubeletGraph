@@ -18,11 +18,10 @@ jupyter notebook demo.ipynb
 ```
 
 ## Dataset Details
-Please refer to Appendix of the manuscript([coming soon](https://tubelet-graph.github.io/)) for more details regarding dataset construction and evaluation metrics.
-- In the meantime, please reach out and I will try my best to provide any relevant details!
+Please refer to the Appendix of the [manuscript](https://arxiv.org/pdf/2511.04678) for more details regarding dataset construction and evaluation metrics.
 
 ## Evaluation
-Please refer to [here](https://github.com/YihongSun/TubeletGraph/blob/main/README.md#evaluations) for the instructions of evaluating state-graph in terms of temporal localization, semantic correctness, spatiotemporal recall, and over transformation recall.
+Please refer to [here](https://github.com/YihongSun/TubeletGraph?tab=readme-ov-file#vost) for the instructions of evaluating state-graph in terms of temporal localization, semantic correctness, spatiotemporal recall, and over transformation recall.
 
 
 ## Citation

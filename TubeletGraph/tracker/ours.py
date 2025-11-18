@@ -14,7 +14,7 @@ class TubeletGraph():
         self.thrds = dict(thrds)
     
     def initialize(self, instance_name, video_dir):
-        self.frame_paths = [osp.join(video_dir, f) for f in sorted(os.listdir(video_dir))]
+        self.frame_paths = [osp.join(video_dir, f) for f in sorted(os.listdir(video_dir)) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
         self.load_objs_compute_distances(instance_name)
         assert len(self.all_tracks) == len(self.frame_paths), f"Number of frames in {self.tubelet_dir} does not match video frames"
 

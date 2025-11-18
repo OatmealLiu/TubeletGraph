@@ -25,7 +25,16 @@ datasets:
     image_format: "frame_*.jpg"
     anno_format:  "frame_*.png"
     fps: 60
-  custom:
+  m3vos:
+    name: m3vos
+    data_dir: <ADD/YOUR/PATH>/M3VOS
+    image_dir: <ADD/YOUR/PATH>/M3VOS/JPEGImages
+    anno_dir: <ADD/YOUR/PATH>/M3VOS/Annotations
+    split_dir: ./splits/m3vos
+    image_format: "*.jpg"
+    anno_format: "*.png"
+    fps: 30
+  custom: # used by quick_run.py, do not change
     name: custom
     data_dir: ./_custom_dataset
     image_dir: ./_custom_dataset/JPEGImages
@@ -34,6 +43,7 @@ datasets:
     image_format: ""
     anno_format: ""
     fps: 30
+  # Add your own dataset below!
 
 entity_seg:
   cropformer:

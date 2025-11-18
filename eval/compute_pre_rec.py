@@ -1,4 +1,4 @@
-import json, os, sys
+import json, os, sys, glob
 import os.path as osp
 import numpy as np
 from tqdm import tqdm
@@ -42,12 +42,13 @@ def process_anno(data_cfg, data_split, pred_dir, processed_anno_dir):
     pbar = tqdm(vid_names)
     for vid_name in pbar:
         pbar.set_description(f'Checking {vid_name}')
-        original_anno_dir = osp.join(data_cfg.anno_dir, vid_name)
-        rgb_fnames = [osp.splitext(f)[0] for f in sorted(os.listdir(osp.join(data_cfg.image_dir, vid_name)))]
 
-        init_anno_fname = sorted(os.listdir(original_anno_dir))[0]
-        init_anno_path = osp.join(original_anno_dir, init_anno_fname)
-        init_mask = np.array(Image.open(osp.join(original_anno_dir, init_anno_path)))
+        rgb_fnames = [osp.splitext(osp.basename(f))[0] for f in sorted(
+            glob.glob(osp.join(data_cfg.image_dir, vid_name, data_cfg.image_format))
+        )]
+        anno_paths = sorted(glob.glob(osp.join(data_cfg.anno_dir, vid_name, data_cfg.anno_format)))
+
+        init_mask = np.array(Image.open(anno_paths[0]))
         unique_obj_ids = np.unique(init_mask)
         track_obj_ids = unique_obj_ids[np.logical_and(unique_obj_ids!=0,unique_obj_ids!=255)]
 
@@ -58,7 +59,7 @@ def process_anno(data_cfg, data_split, pred_dir, processed_anno_dir):
             continue
     
         pbar.set_description(f'Saving {vid_name} (Only need to save once, will reuse later)')
-        loaded_anno = {osp.splitext(a)[0] : np.array(Image.open(osp.join(original_anno_dir, a))) for a in os.listdir(original_anno_dir)}
+        loaded_anno = {osp.splitext(osp.basename(a))[0] : np.array(Image.open(a)) for a in anno_paths}
         out_ignore = {rgb_fnames.index(k) : bmask_to_rle(v == 255) for k, v in loaded_anno.items()}
         for obj_id in track_obj_ids:
             out_annotations = {rgb_fnames.index(k) : bmask_to_rle(v == obj_id) for k, v in loaded_anno.items()}
