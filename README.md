@@ -58,7 +58,7 @@ python quick_run.py \
     [--fps 30] \
 ```
 It generates video visualizations (.mp4) and state graph diagrams (.pdf) for all prompt objects in `<FIRST_FRAME_MASK.png>`. 
-- `--input_dir`: Directory containing video frames as individual images (e.g., `frame0001.jpg`, `frame0002.jpg`, ...)
+- `--input_dir`: Directory containing video frames as individual images (e.g., `0001.jpg, 0002.jpg, ...`)
 - `--input_mask`: PNG annotation of the first frame with object IDs as pixel values (0=background, 1=object1, 2=object2, ..., 255=ignore)
 - `--fps` (optional): Frames per second, default=30
 
