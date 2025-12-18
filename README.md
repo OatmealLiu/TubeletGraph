@@ -2,10 +2,8 @@
 ### [Project Page](https://tubelet-graph.github.io/) | [Paper](https://arxiv.org/abs/2511.04678) | [Video](https://youtu.be/FOs0BEd5-NY) | [Data](https://github.com/YihongSun/TubeletGraph/tree/main/VOST-TAS#readme)
 
 Official PyTorch implementation for the NeurIPS 2025 paper: "Tracking and Understanding Object Transformations".
+aaa
 
-<a href="#license"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"/></a>  
-
-![](assets/teaser.png)
 
 ## ⚙️ Installation
 The code is tested with `python=3.10`, `torch==2.7.0+cu126` and `torchvision==0.22.0+cu126` on a RTX A6000 GPU.
