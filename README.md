@@ -63,6 +63,27 @@ It generates video visualizations (.mp4) and state graph diagrams (.pdf) for all
 **Example: 0334_cut_fruit_1**
 ```bash
 python quick_run.py --input_dir assets/example/0334_cut_fruit_1 --input_mask assets/example/0334_cut_fruit_1_0000000.png
+
+
+python quick_run.py --input_dir assets/example/bloom_flower_1 --input_mask assets/example/0334_cut_fruit_1_0000000.png
+
+
+python quick_run.py --input_dir assets/example/bloom_flower_1 --input_mask assets/example/bloom_flower_1_0000173.png
+
+python quick_run.py --input_dir assets/example/bloom_flower_2 --input_mask assets/example/bloom_flower_2_0001571.png
+
+python quick_run.py --input_dir assets/example/make_dumpling --input_mask assets/example/make_dumpling_0000000.png
+
+python quick_run.py --input_dir assets/example/make_pottery_bowl --input_mask assets/example/make_pottery_bowl_0003955.png
+
+python quick_run.py --input_dir assets/example/robot_folds_clothes --input_mask assets/example/robot_folds_clothes_0000000.png
+
+python quick_run.py --input_dir assets/example/robot_open_drawer_1 --input_mask assets/example/robot_open_drawer_1_0000295.png
+
+python quick_run.py --input_dir assets/example/robot_open_drawer_2 --input_mask assets/example/robot_open_drawer_2_0000680.png
+
+
+
 ```
 The output visualizations are found under `./_pred_out/predictions/custom-0334_cut_fruit_1-Ours_gpt-4.1`.
 - To ensure consistency, the expected outputs are pre-computed and found under `./assets/expected_output/` 
