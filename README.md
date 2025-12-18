@@ -65,7 +65,6 @@ It generates video visualizations (.mp4) and state graph diagrams (.pdf) for all
 python quick_run.py --input_dir assets/example/0334_cut_fruit_1 --input_mask assets/example/0334_cut_fruit_1_0000000.png
 
 
-python quick_run.py --input_dir assets/example/bloom_flower_1 --input_mask assets/example/0334_cut_fruit_1_0000000.png
 
 
 python quick_run.py --input_dir assets/example/bloom_flower_1 --input_mask assets/example/bloom_flower_1_0000173.png
