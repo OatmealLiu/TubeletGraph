@@ -82,6 +82,7 @@ python quick_run.py --input_dir assets/example/robot_open_drawer_1 --input_mask 
 python quick_run.py --input_dir assets/example/robot_open_drawer_2 --input_mask assets/example/robot_open_drawer_2_0000680.png
 
 
+python quick_run.py --input_dir assets/example/cut_beef --input_mask assets/example/cut_beef_0000000.png
 
 ```
 The output visualizations are found under `./_pred_out/predictions/custom-0334_cut_fruit_1-Ours_gpt-4.1`.
