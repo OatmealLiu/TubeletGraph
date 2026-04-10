@@ -79,7 +79,7 @@ tubelet:
     model_cfg: configs/sam2.1/sam2.1_hiera_l.yaml
     multi_mask: true
 sem_sim:
-  name: fcclip
+  name: clip
   fcclip:
     project_path: ./thirdparty/fc-clip
     config_path: ./thirdparty/fc-clip/configs/coco/panoptic-segmentation/fcclip/fcclip_convnext_large_eval_ade20k.yaml
@@ -92,7 +92,7 @@ methods:
   Ours:
     name: Ours
     module: TubeletGraph
-    tubelet_dirname: tubelets_{}_cropformer_fcclip
+    tubelet_dirname: tubelets_{}_cropformer_clip
     thrds:
       mm_cover: 0.3
       clip_sim_max: 0.7
