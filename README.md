@@ -17,6 +17,9 @@ pip install torch==2.7.0 torchvision==0.22.0 --index-url https://download.pytorc
 pip install -r requirements.txt
 bash thirdparty/setup_ckpts.sh
 
+mmcv==2.2.0
+mim install mmcv==2.2.0
+
 # Install SAM2 with multi-mask predictions
 cd thirdparty/sam2
 pip install -e .
