@@ -60,7 +60,7 @@ entity_seg:
       stability_score_offset: 1.0
       mask_threshold: 0.0
 tubelet:
-  entity_method: cropformer
+  entity_method: sam_automask
   tracker:
     name: SAM2.1
     module: SAM2
@@ -92,7 +92,7 @@ methods:
   Ours:
     name: Ours
     module: TubeletGraph
-    tubelet_dirname: tubelets_{}_cropformer_clip
+    tubelet_dirname: tubelets_{}_sam_automask_clip
     thrds:
       mm_cover: 0.3
       clip_sim_max: 0.7
