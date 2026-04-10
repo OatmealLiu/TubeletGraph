@@ -2,6 +2,9 @@ import os, sys, argparse
 import subprocess
 from multiprocessing import Process
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from utils import load_yaml_file
+
 def run_command(cmd, description, env=None):
     """Run a command and handle errors (Single Process)."""
     print(f"\n{'='*60}")
@@ -54,9 +57,13 @@ def main():
     project_root = os.path.dirname(script_dir)
     os.chdir(project_root)
     
+    cfg = load_yaml_file(args.config)
+    entity_method = cfg.tubelet.entity_method
+
     # Step 1: Computing entities (region proposals)
+    entity_script = f"TubeletGraph/entity_segmentation/{entity_method}.py"
     cmd = [
-        "python3", "TubeletGraph/entity_segmentation/cropformer.py",
+        "python3", entity_script,
         "-c", args.config,
         "-d", args.dataset,
         "-s", args.split,
@@ -75,9 +82,11 @@ def main():
     run_parallel(cmd, "Computing tubelets", args.gpus)
     
     # Step 3: Computing semantic similarity
-    tubelet_name = f"tubelets_{args.dataset}_cropformer"    # assuming cropformer is used
+    sem_sim_name = cfg.sem_sim.name
+    sem_sim_script = f"TubeletGraph/semantic_sim/compute_sim_{sem_sim_name}.py"
+    tubelet_name = f"tubelets_{args.dataset}_{entity_method}"
     cmd = [
-        "python3", "TubeletGraph/semantic_sim/compute_sim_fcclip.py",
+        "python3", sem_sim_script,
         "-c", args.config,
         "-d", args.dataset,
         "-s", args.split,

@@ -1,105 +1,74 @@
-"""
-This file may have been modified by Bytedance Ltd. and/or its affiliates (“Bytedance's Modifications”).
-All Bytedance's Modifications are Copyright (year) Bytedance Ltd. and/or its affiliates. 
-
-Reference: https://github.com/facebookresearch/Mask2Former/blob/main/demo/demo.py
-"""
-
 import argparse, random, glob, os, sys
 import multiprocessing as mp
 import os.path as osp
 
-# fmt: off
 sys.path.insert(1, osp.join(sys.path[0], '..'))
-# fmt: on
 
-import tempfile
-import time
-import warnings
-
-import cv2
 import numpy as np
 import tqdm
 import torch
 import torch.nn.functional as F
 import json
 import pycocotools.mask as MaskUtils
+from PIL import Image
 
-from detectron2.config import get_cfg
-from detectron2.data.detection_utils import read_image
-from detectron2.projects.deeplab import add_deeplab_config
-
-sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(__file__))))  # add proj dir to path
+sys.path.insert(0, osp.dirname(osp.dirname(osp.dirname(__file__))))
 from utils import load_yaml_file, load_anno
 
+import clip
 
-def setup_cfg(fc_cfg):
-    # load config from file and command-line arguments
-    cfg = get_cfg()
-    add_deeplab_config(cfg)
-    add_maskformer2_config(cfg)
-    add_fcclip_config(cfg)
-    cfg.merge_from_file(fc_cfg.config_path)
-    cfg.merge_from_list(fc_cfg.opts)
-    cfg.freeze()
-    return cfg
 
-def get_parser():
-    parser = argparse.ArgumentParser(description="maskformer2 demo for builtin configs")
-    parser.add_argument(
-        "--config-file",
-        default="configs/coco/panoptic-segmentation/fcclip/fcclip_convnext_large_eval_ade20k.yaml",
-        metavar="FILE",
-        help="path to config file",
-    )
-    parser.add_argument("--opts", help="Modify config options using the command-line 'KEY VALUE' pairs", default=['MODEL.WEIGHTS', 'checkpoints/fcclip_cocopan.pth'], nargs=argparse.REMAINDER,)
-    return parser
+def extract_mask_crop(img_rgb, mask, preprocess, padding_ratio=0.1):
+    """Crop image to mask bbox, zero out background with mean pixel, preprocess for CLIP."""
+    h, w = mask.shape
+    ys, xs = np.where(mask)
+    if len(ys) == 0:
+        return None
 
-def demo_run_on_image(demo, image, masks):
-    ''' Digging into the function '''
+    y0, y1 = int(ys.min()), int(ys.max())
+    x0, x1 = int(xs.min()), int(xs.max())
 
-    predictor = demo.predictor
-    with torch.no_grad(): 
-        if predictor.input_format == "RGB":
-            image = image[:, :, ::-1]
-        height, width = image.shape[:2]
-        image = predictor.aug.get_transform(image).apply_image(image)
-        image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
-        image.to(predictor.cfg.MODEL.DEVICE)
+    bh, bw = y1 - y0 + 1, x1 - x0 + 1
+    pad_y = int(bh * padding_ratio)
+    pad_x = int(bw * padding_ratio)
+    y0 = max(0, y0 - pad_y)
+    y1 = min(h - 1, y1 + pad_y)
+    x0 = max(0, x0 - pad_x)
+    x1 = min(w - 1, x1 + pad_x)
 
-        inputs = {"image": image, "height": height, "width": width, "masks": masks}
-        predictions = predictor.model.forward_feature([inputs])[0]
-        predictions['pooled_clip_feature'] = predictions['pooled_clip_feature'].cpu()
+    crop = img_rgb[y0:y1+1, x0:x1+1].copy()
+    crop_mask = mask[y0:y1+1, x0:x1+1]
 
-        return predictions
+    mean_pixel = crop[crop_mask].mean(axis=0) if crop_mask.any() else np.array([128, 128, 128], dtype=np.uint8)
+    crop[~crop_mask] = mean_pixel.astype(np.uint8)
+
+    pil_crop = Image.fromarray(crop)
+    return preprocess(pil_crop).unsqueeze(0)
+
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="Running FC-CLIP to obtain clip features.")
-    parser.add_argument("-c", "--config", default="configs/default.yaml", metavar="FILE", help="path to config file",)
+    parser = argparse.ArgumentParser(description="Running standard CLIP to obtain clip features.")
+    parser.add_argument("-c", "--config", default="configs/default.yaml", metavar="FILE", help="path to config file")
     parser.add_argument("-d", '--dataset', type=str, help='Dataset to run', default='vost')
     parser.add_argument("-s", '--split', type=str, default='val', help='list of img dirs to process')
     parser.add_argument("-t", '--tubelet_name', type=str, default='tubelets_vost_cropformer', help='tubelet directory name')
     parser.add_argument('--num_workers', type=int, default=1, help='Number of workers.')
     parser.add_argument('--wid', type=int, default=0, help='worker id.')
     return parser
-    
+
+
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)
     args = get_parser().parse_args()
     my_cfg = load_yaml_file(args.config)
     data_cfg = getattr(my_cfg.datasets, args.dataset)
-    fc_cfg = my_cfg.sem_sim.fcclip
+    clip_cfg = my_cfg.sem_sim.clip
 
-    sys.path[0] = osp.join(fc_cfg.project_path, 'demo')
-    sys.path.insert(1, fc_cfg.project_path)
-    from fcclip import add_maskformer2_config, add_fcclip_config
-    from predictor import VisualizationDemo
-    cfg = setup_cfg(fc_cfg)
-    demo = VisualizationDemo(cfg)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model, preprocess = clip.load(clip_cfg.model_name, device)
 
-    # Custom 
     args.tubelet_dir = osp.join(my_cfg.paths.intermdir, args.tubelet_name)
-    out_dir = args.tubelet_dir.rstrip('/') + '_fcclip'
+    out_dir = args.tubelet_dir.rstrip('/') + '_clip'
     os.makedirs(out_dir, exist_ok=True)
 
     with open(osp.join(data_cfg.split_dir, args.split+'.txt'), 'r') as f:
@@ -108,25 +77,21 @@ if __name__ == "__main__":
         instance_names = []
         for instance in split_names:
             init_prompt_path = sorted(glob.glob(osp.join(data_cfg.anno_dir, instance, data_cfg.anno_format)))[0]
-            prompt_objs = load_anno(init_prompt_path)  # dict('1': rle, ...)
+            prompt_objs = load_anno(init_prompt_path)
             instance_names += [(instance + '_' + k + '.json', instance) for k in prompt_objs.keys()]
         assert np.all([osp.exists(osp.join(args.tubelet_dir, x)) for x,y in instance_names])
 
-        if args.num_workers > 1:    # shuffle if multiple workers
+        if args.num_workers > 1:
             random.seed(0); random.shuffle(instance_names)
             print('Shuffled:', ', '.join([x for x,y in instance_names[:args.num_workers]]), '...')
             instance_names = instance_names[args.wid::args.num_workers]
 
     for anno_fname, video_name in instance_names:
-        # if '555_tear_aluminium_foil' not in anno_fname:   # debug 555_tear_aluminium_foil 5304_unpack_broccoli 7359_fold_tape_measure
-        #     continue
-
         out_path = osp.join(out_dir, anno_fname)
         if osp.exists(out_path):
             print(f"Skip {anno_fname} as {out_path} exists")
             continue
 
-        # Loading annotations
         with open(osp.join(args.tubelet_dir, anno_fname), 'r') as f:
             load_data = json.load(f)
             all_tracks = load_data['all_tracks']
@@ -137,42 +102,42 @@ if __name__ == "__main__":
             candidate_objs = [obj_idx for obj_idx, obj_info in tracked_objs.items() if 'mm_iou' in obj_info and obj_info['mm_iou']>0]
             obj_ind_to_comp = set([prompt_obj] + candidate_objs)
 
-        # fill in 0 to pad
         for obj_idx in later_tracked_objs:
             for metric_name in ['clip_sim', 'clip_sim_min', 'clip_sim_max', 'clip_sim_a', 'clip_sim_a_min', 'clip_sim_a_max']:
                 tracked_objs[obj_idx][metric_name] = 0
 
         if len(candidate_objs) > 0:
-            # Getting image paths
             frame_paths = glob.glob(osp.join(data_cfg.image_dir, video_name, data_cfg.image_format))
             frame_paths = sorted(frame_paths)
 
+            feat_dim = model.visual.output_dim
             out = dict()
             for ii, path in tqdm.tqdm(enumerate(frame_paths), desc=anno_fname.replace('.json', ''), total=len(frame_paths)):
                 mdata = all_tracks[str(ii)]
                 obj_ind_str = [k for k in mdata.keys() if k in obj_ind_to_comp]
-                masks = np.stack([MaskUtils.decode([mdata[k]])[...,-1].astype(bool) for k in obj_ind_str])
 
-                img = read_image(path, format="BGR")
-                predictions = demo_run_on_image(demo, img, masks)
+                img_rgb = np.array(Image.open(path).convert("RGB"))
 
-                mask_cnts = torch.sum(predictions['mask_for_pooling'] == 1, (2,3))
-                out[str(ii)+'_cnts'] = {
-                    k: mask_cnts[0, obj_ind_str.index(k)].item() for k in obj_ind_str
-                }
+                frame_feats = {}
+                for k in obj_ind_str:
+                    mask = MaskUtils.decode([mdata[k]])[..., -1].astype(bool)
+                    crop_tensor = extract_mask_crop(img_rgb, mask, preprocess)
+                    if crop_tensor is None:
+                        continue
+                    with torch.no_grad():
+                        feat = model.encode_image(crop_tensor.to(device)).float().cpu()
+                    frame_feats[k] = feat
 
-                out[str(ii)] = {
-                    k: predictions['pooled_clip_feature'][:,obj_ind_str.index(k)] for k in obj_ind_str if out[str(ii)+'_cnts'][k] > 0
-                }
+                out[str(ii)] = frame_feats
 
             frame_ind = list([int(x) for x in all_tracks.keys()]); frame_ind.remove(0); frame_ind.sort(); frame_ind = [str(x) for x in frame_ind]
-            placeholder = torch.ones(1, 768) * torch.inf
-            query_clip_feat = torch.cat([out[frame_idx][prompt_obj] if prompt_obj in out[frame_idx].keys() else placeholder for frame_idx in ['0'] + frame_ind])
+            placeholder = torch.ones(1, feat_dim) * torch.inf
+            query_clip_feat = torch.cat([out[frame_idx][prompt_obj] if prompt_obj in out[frame_idx] else placeholder for frame_idx in ['0'] + frame_ind])
             query_valid = query_clip_feat[:,0] < torch.inf
-        
+
             query_clip_feat = F.normalize(query_clip_feat, dim=-1).T
             for obj_idx in candidate_objs:
-                later_clip_feat_list = [out[frame_idx][obj_idx] for frame_idx in frame_ind if obj_idx in out[frame_idx].keys()]
+                later_clip_feat_list = [out[frame_idx][obj_idx] for frame_idx in frame_ind if obj_idx in out[frame_idx]]
                 if len(later_clip_feat_list) > 0:
                     later_clip_feats = F.normalize(torch.cat(later_clip_feat_list), dim=-1)
                     cos_sim_all = later_clip_feats @ query_clip_feat[:, query_valid]
@@ -182,7 +147,7 @@ if __name__ == "__main__":
                     cos_sim_prior = cos_sim_all[:, :num_valid_prior] if num_valid_prior > 0 else None
                 else:
                     cos_sim_all, cos_sim_prior = None, None
-                
+
                 if cos_sim_prior is not None:
                     tracked_objs[obj_idx]['clip_sim'] = torch.mean(cos_sim_prior).item()
                     tracked_objs[obj_idx]['clip_sim_min'] = torch.min(cos_sim_prior).item()
@@ -195,4 +160,4 @@ if __name__ == "__main__":
             print(f"Skip {anno_fname} as no candidate objects found")
 
         with open(out_path, 'w') as f:
-            json.dump({'tracked_objs': tracked_objs, 'all_tracks': all_tracks,}, f)
+            json.dump({'tracked_objs': tracked_objs, 'all_tracks': all_tracks}, f)

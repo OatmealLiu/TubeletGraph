@@ -63,7 +63,7 @@ entity_seg:
       mask_threshold: 0.0
 
 tubelet:
-  entity_method: cropformer
+  entity_method: cropformer  # "cropformer" or "sam_automask"
   tracker:
     name: SAM2.1
     module: SAM2
@@ -83,16 +83,19 @@ tubelet:
     multi_mask: True
 
 sem_sim:
-  name: fcclip
-  project_path: ./thirdparty/fc-clip
-  config_path: ./thirdparty/fc-clip/configs/coco/panoptic-segmentation/fcclip/fcclip_convnext_large_eval_ade20k.yaml
-  opts: ['MODEL.WEIGHTS', './_ckpts/fcclip_cocopan.pth']
+  name: fcclip  # "fcclip" or "clip"
+  fcclip:
+    project_path: ./thirdparty/fc-clip
+    config_path: ./thirdparty/fc-clip/configs/coco/panoptic-segmentation/fcclip/fcclip_convnext_large_eval_ade20k.yaml
+    opts: ['MODEL.WEIGHTS', './_ckpts/fcclip_cocopan.pth']
+  clip:
+    model_name: ViT-L/14
 
 methods:
   Ours:
     name: Ours
     module: TubeletGraph
-    tubelet_dirname: "tubelets_{}_cropformer_fcclip"
+    tubelet_dirname: "tubelets_{}_cropformer_fcclip"  # pattern: "tubelets_{}_<entity_method>_<sem_sim.name>"
     thrds: 
       mm_cover: 0.3
       clip_sim_max: 0.7
